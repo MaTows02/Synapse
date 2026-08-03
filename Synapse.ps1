@@ -35,7 +35,7 @@ function Get-FileFromWeb {
 }
 
 $installerPath = "C:\ProgramData\Synapse\Unattend\SynapseInstaller.exe"
-$downloadUrl = "https://github.com/Matows/Synapse/releases/latest/download/Synapse.Installer.exe"
+$downloadUrl = "https://github.com/MaTows02/Synapse/releases/latest/download/Synapse.Installer.exe"
 
 
 try {

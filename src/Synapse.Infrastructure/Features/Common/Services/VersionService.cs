@@ -25,8 +25,8 @@ public class VersionService : IVersionService
     private readonly IProcessExecutor _processExecutor;
     private readonly IFileSystemService _fileSystemService;
     private readonly HttpClient _httpClient;
-    private readonly string _latestReleaseApiUrl = "https://api.github.com/repos/Matows/Synapse/releases/latest";
-    private readonly string _latestReleaseDownloadUrl = "https://github.com/Matows/Synapse/releases/latest/download/Synapse.Installer.exe";
+    private readonly string _latestReleaseApiUrl = "https://api.github.com/repos/MaTows02/Synapse/releases/latest";
+    private readonly string _latestReleaseDownloadUrl = "https://github.com/MaTows02/Synapse/releases/latest/download/Synapse.Installer.exe";
     private readonly string _userAgent = "Synapse-Update-Checker";
     private string? _downloadedInstallerPath;
 

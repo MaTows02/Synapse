@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
+using Windows.System;
 using Windows.UI;
 
 namespace Synapse.UI.Features.ControlCenter;
@@ -15,12 +16,15 @@ public sealed partial class ControlCenterPage : Page
     private readonly IDeviceControlService _devices = App.Services.GetRequiredService<IDeviceControlService>();
     private readonly IGameDiscoveryService _games = App.Services.GetRequiredService<IGameDiscoveryService>();
     private readonly IGameBoosterService _booster = App.Services.GetRequiredService<IGameBoosterService>();
+    private readonly IGameTuningService _tunings = App.Services.GetRequiredService<IGameTuningService>();
     private readonly IDeepCleanerService _cleaner = App.Services.GetRequiredService<IDeepCleanerService>();
     private readonly IDeepUninstallService _uninstaller = App.Services.GetRequiredService<IDeepUninstallService>();
     private readonly ISystemDiagnosticsService _diagnostics = App.Services.GetRequiredService<ISystemDiagnosticsService>();
     private readonly IPerformanceModeService _performance = App.Services.GetRequiredService<IPerformanceModeService>();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private DeepUninstallPlan? _uninstallPlan;
+    private IReadOnlyList<DiagnosticCheckResult> _lastDiagnosticChecks = Array.Empty<DiagnosticCheckResult>();
+    private readonly Dictionary<string, Control> _gameTuningInputs = new(StringComparer.OrdinalIgnoreCase);
     private bool _ignoreToggleEvents;
 
     public ControlCenterPage()
@@ -37,7 +41,7 @@ public sealed partial class ControlCenterPage : Page
     {
         BuildCleanupOptions();
         BuildBoosterRules();
-        await Task.WhenAll(RefreshDevicesAsync(), RefreshHardwareAsync(), LoadApplicationsAsync());
+        await Task.WhenAll(RefreshDevicesAsync(), RefreshHardwareAsync(), LoadApplicationsAsync(), RefreshGamesAsync());
         await _devices.ApplyPersistedProfilesAsync();
         await _booster.StartMonitoringAsync();
         await RefreshTelemetryAsync();
@@ -54,6 +58,9 @@ public sealed partial class ControlCenterPage : Page
             MemoryValue.Text = $"{sample.MemoryPercent:0}%"; MemoryBar.Value = sample.MemoryPercent;
             GpuValue.Text = $"{sample.GpuPercent:0}%"; GpuBar.Value = sample.GpuPercent;
             DiskValue.Text = $"{sample.DiskPercent:0}%"; DiskBar.Value = sample.DiskPercent;
+            CpuTemperatureText.Text = sample.CpuTemperatureCelsius.HasValue
+                ? $"{sample.CpuTemperatureCelsius:0.#} °C · capteur ACPI"
+                : "Température non publiée par le firmware";
             LiveStatusText.Text = $"● TEMPS RÉEL · {sample.NetworkBytesPerSecond / 1024 / 1024:0.0} Mo/s";
         }
         catch { LiveStatusText.Text = "● CAPTEURS INDISPONIBLES"; }
@@ -63,8 +70,19 @@ public sealed partial class ControlCenterPage : Page
     {
         var devices = await _devices.DiscoverAsync();
         DevicePicker.ItemsSource = devices;
-        if (devices.Count > 0) DevicePicker.SelectedIndex = 0;
+        if (devices.Count > 0)
+        {
+            DevicePicker.SelectedIndex = 0;
+            var controllable = devices.Count(x => x.CanControlFan || x.CanControlRgb);
+            DeviceStatusText.Text = $"{devices.Count} périphérique(s) détecté(s) · {controllable} contrôlable(s) avec un adaptateur sûr.";
+        }
         else DeviceStatusText.Text = "Aucun contrôleur de ventilateur/RGB publié par ce matériel.";
+    }
+
+    private async void RefreshDevicesButton_Click(object sender, RoutedEventArgs e)
+    {
+        DeviceStatusText.Text = "Nouvelle détection ACPI, USB, HID et Plug & Play…";
+        await RefreshDevicesAsync();
     }
 
     private void DevicePicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -72,7 +90,7 @@ public sealed partial class ControlCenterPage : Page
         if (DevicePicker.SelectedItem is not DeviceControlCapability device) return;
         FanSlider.IsEnabled = ApplyFanButton.IsEnabled = device.CanControlFan;
         RgbPicker.IsEnabled = ApplyRgbButton.IsEnabled = device.CanControlRgb;
-        DeviceStatusText.Text = $"{device.Provider} · {device.Status}";
+        DeviceStatusText.Text = $"{device.Provider} · {device.DetectionMethod} · {device.Status}";
     }
 
     private async void ApplyFanButton_Click(object sender, RoutedEventArgs e)
@@ -116,12 +134,126 @@ public sealed partial class ControlCenterPage : Page
         OverviewInfo.IsOpen = true;
     }
 
-    private async void ScanGamesButton_Click(object sender, RoutedEventArgs e)
+    private async void ScanGamesButton_Click(object sender, RoutedEventArgs e) => await RefreshGamesAsync();
+
+    private async Task RefreshGamesAsync()
     {
         GameStatusText.Text = "Analyse en cours…";
         var games = await _games.DiscoverAsync();
         GamesList.ItemsSource = games;
-        GameStatusText.Text = $"{games.Count} jeu(x) détecté(s).";
+        if (games.Count > 0 && GamesList.SelectedItem is null) GamesList.SelectedIndex = 0;
+        GameStatusText.Text = $"{games.Count} jeu(x) détecté(s) dans Steam, Epic et les applications enregistrées.";
+    }
+
+    private async void GamesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (GamesList.SelectedItem is not DetectedGame game) return;
+        SelectedGameNameText.Text = game.Name;
+        SelectedGamePathText.Text = string.IsNullOrWhiteSpace(game.ExecutablePath)
+            ? "Exécutable non confirmé : le profil ne peut pas encore être activé."
+            : $"{game.Launcher} · {game.ExecutablePath}";
+
+        GameHighPriorityToggle.IsOn = true;
+        GameTimerToggle.IsOn = true;
+        GamePowerPlanToggle.IsOn = false;
+        GameKeepAwakeToggle.IsOn = true;
+        await RefreshGameTuningsAsync(game);
+
+        var profile = (await _booster.LoadProfilesAsync()).FirstOrDefault(x =>
+            string.Equals(x.GameId, game.Id, StringComparison.OrdinalIgnoreCase));
+        if (profile is null) return;
+        GameHighPriorityToggle.IsOn = profile.HighPriority;
+        GameTimerToggle.IsOn = profile.RequestLowLatencyTimer;
+        GamePowerPlanToggle.IsOn = profile.UseHighPerformancePowerPlan;
+        GameKeepAwakeToggle.IsOn = profile.KeepComputerAwake;
+    }
+
+    private async Task RefreshGameTuningsAsync(DetectedGame game)
+    {
+        var catalog = await _tunings.InspectAsync(game);
+        GameTuningsPanel.Children.Clear();
+        _gameTuningInputs.Clear();
+        GameTuningInfo.Severity = catalog.IsSupported ? InfoBarSeverity.Success : InfoBarSeverity.Informational;
+        GameTuningInfo.Title = catalog.IsSupported ? "Configuration reconnue" : "Aucune écriture proposée";
+        GameTuningInfo.Message = catalog.Status;
+
+        foreach (var option in catalog.Options)
+        {
+            Control input;
+            if (option.Kind == GameTuningControlKind.Toggle)
+            {
+                input = new ToggleSwitch
+                {
+                    IsOn = option.CurrentValue == "1",
+                    OffContent = "Désactivé",
+                    OnContent = "Activé",
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+            }
+            else
+            {
+                var picker = new ComboBox
+                {
+                    ItemsSource = option.Choices,
+                    DisplayMemberPath = nameof(GameTuningChoice.Label),
+                    MinWidth = 150,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                picker.SelectedItem = option.Choices.FirstOrDefault(x => x.Value == option.CurrentValue) ?? option.Choices.FirstOrDefault();
+                input = picker;
+            }
+
+            _gameTuningInputs[option.Id] = input;
+            var grid = new Grid { ColumnSpacing = 12 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var text = new StackPanel();
+            text.Children.Add(new TextBlock { Text = option.Name, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            text.Children.Add(new TextBlock { Text = option.Description, Opacity = 0.62, TextWrapping = TextWrapping.Wrap });
+            grid.Children.Add(text);
+            Grid.SetColumn(input, 1);
+            grid.Children.Add(input);
+            GameTuningsPanel.Children.Add(new Border
+            {
+                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(20, 128, 128, 128)),
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(48, 128, 128, 128)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(14),
+                Child = grid
+            });
+        }
+    }
+
+    private async void RefreshGameTuningsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GamesList.SelectedItem is DetectedGame game) await RefreshGameTuningsAsync(game);
+    }
+
+    private async void ApplyGameTuningsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GamesList.SelectedItem is not DetectedGame game) return;
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, input) in _gameTuningInputs)
+        {
+            if (input is ToggleSwitch toggle) values[id] = toggle.IsOn ? "1" : "0";
+            else if (input is ComboBox { SelectedItem: GameTuningChoice choice }) values[id] = choice.Value;
+        }
+        var result = await _tunings.ApplyAsync(game, values);
+        GameTuningInfo.Severity = result.Succeeded ? InfoBarSeverity.Success : InfoBarSeverity.Warning;
+        GameTuningInfo.Title = result.Succeeded ? "Réglages appliqués" : "Aucune modification";
+        GameTuningInfo.Message = result.Message;
+        if (result.Succeeded) await RefreshGameTuningsAsync(game);
+    }
+
+    private async void RestoreGameTuningsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (GamesList.SelectedItem is not DetectedGame game) return;
+        var result = await _tunings.RestoreAsync(game);
+        GameTuningInfo.Severity = result.Succeeded ? InfoBarSeverity.Success : InfoBarSeverity.Warning;
+        GameTuningInfo.Title = result.Succeeded ? "Configuration restaurée" : "Restauration indisponible";
+        GameTuningInfo.Message = result.Message;
+        if (result.Succeeded) await RefreshGameTuningsAsync(game);
     }
 
     private async void CreateGameProfileButton_Click(object sender, RoutedEventArgs e)
@@ -131,9 +263,18 @@ public sealed partial class ControlCenterPage : Page
             .Where(x => x.Tag is BoosterProcessRule)
             .Select(x => ((BoosterProcessRule)x.Tag) with { Enabled = x.IsChecked == true })
             .ToList();
-        await _booster.SaveProfileAsync(new GameOptimizationProfile(game.Id, game.ExecutablePath, true, true, true, rules, DateTimeOffset.Now));
+        await _booster.SaveProfileAsync(new GameOptimizationProfile(
+            game.Id,
+            game.ExecutablePath,
+            true,
+            GameHighPriorityToggle.IsOn,
+            GameTimerToggle.IsOn,
+            rules,
+            DateTimeOffset.Now,
+            GamePowerPlanToggle.IsOn,
+            GameKeepAwakeToggle.IsOn));
         await _booster.StartMonitoringAsync();
-        GameStatusText.Text = $"Profil actif · {rules.Count(x => x.Enabled)} processus sélectionné(s). Ils seront repris automatiquement à la fermeture du jeu.";
+        GameStatusText.Text = $"Profil actif · {rules.Count(x => x.Enabled)} processus sélectionné(s) · restauration automatique à la fermeture du jeu.";
     }
 
     private void BuildBoosterRules()
@@ -240,8 +381,56 @@ public sealed partial class ControlCenterPage : Page
     private async void RunDiagnosticsButton_Click(object sender, RoutedEventArgs e)
     {
         DiagnosticsSummaryText.Text = "Diagnostic en cours…";
+        HealthScoreText.Text = "…";
         var report = await _diagnostics.RunAsync();
-        DiagnosticsList.ItemsSource = report.Checks;
+        _lastDiagnosticChecks = report.Checks;
+        ApplyHealthFilters();
+        var scored = report.HealthyCount + report.WarningCount + report.CriticalCount;
+        var score = scored == 0 ? 0 : (int)Math.Round(report.HealthyCount * 100d / scored);
+        HealthScoreText.Text = $"{score}/100";
         DiagnosticsSummaryText.Text = $"{report.HealthyCount} sains · {report.WarningCount} avertissements · {report.CriticalCount} critiques";
     }
+
+    private void HealthFilter_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyHealthFilters();
+
+    private void ApplyHealthFilters()
+    {
+        if (DiagnosticsList is null || HealthCategoryPicker is null || HealthStatePicker is null) return;
+        IEnumerable<DiagnosticCheckResult> checks = _lastDiagnosticChecks;
+        if (HealthCategoryPicker.SelectedIndex > 0 && HealthCategoryPicker.SelectedItem is string category)
+            checks = checks.Where(x => string.Equals(x.Category, category, StringComparison.OrdinalIgnoreCase));
+
+        checks = HealthStatePicker.SelectedIndex switch
+        {
+            1 => checks.Where(x => x.State == DiagnosticState.Critical),
+            2 => checks.Where(x => x.State == DiagnosticState.Warning),
+            3 => checks.Where(x => x.State == DiagnosticState.Healthy),
+            4 => checks.Where(x => x.State == DiagnosticState.Unknown),
+            _ => checks
+        };
+        DiagnosticsList.ItemsSource = checks.ToList();
+    }
+
+    private void ClearDiagnosticsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _lastDiagnosticChecks = Array.Empty<DiagnosticCheckResult>();
+        DiagnosticsList.ItemsSource = null;
+        HealthScoreText.Text = "—";
+        DiagnosticsSummaryText.Text = "Aucun diagnostic lancé";
+    }
+
+    private void QuickNavButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string value } && int.TryParse(value, out var index))
+            MainTabView.SelectedIndex = index;
+    }
+
+    private async void OpenDocumentationButton_Click(object sender, RoutedEventArgs e) =>
+        await Launcher.LaunchUriAsync(new Uri("https://github.com/MaTows02/Synapse/blob/main/docs/CONTROL_CENTER.md"));
+
+    private async void OpenIssuesButton_Click(object sender, RoutedEventArgs e) =>
+        await Launcher.LaunchUriAsync(new Uri("https://github.com/MaTows02/Synapse/issues/new/choose"));
+
+    private async void OpenSupportButton_Click(object sender, RoutedEventArgs e) =>
+        await Launcher.LaunchUriAsync(new Uri("https://github.com/MaTows02/Synapse/blob/main/SUPPORT.md"));
 }

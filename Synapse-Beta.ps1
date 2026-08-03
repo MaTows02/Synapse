@@ -40,7 +40,7 @@ try {
     Write-Host "Checking for latest Synapse beta release..." -ForegroundColor Cyan
 
     # Query GitHub API for the latest pre-release
-    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/Matows/Synapse/releases" -Headers @{ "User-Agent" = "Synapse-Beta-Downloader" }
+    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/MaTows02/Synapse/releases" -Headers @{ "User-Agent" = "Synapse-Beta-Downloader" }
     $betaRelease = $releases | Where-Object { $_.prerelease -eq $true } | Select-Object -First 1
 
     if (-not $betaRelease) {

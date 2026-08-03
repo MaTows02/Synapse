@@ -11,6 +11,6 @@ public sealed partial class ExternalAppsHelpContent : UserControl
         HelpContentText.Text = localizationService.GetString("Help_ExternalApps_Content");
 
         LearnMoreLink.Content = localizationService.GetString("Help_LearnMore_ExternalApps");
-        LearnMoreLink.NavigateUri = new System.Uri("https://github.com/Matows/Synapse#logiciels-et-réglages-windows");
+        LearnMoreLink.NavigateUri = new System.Uri("https://github.com/MaTows02/Synapse#optimisations-windows");
     }
 }

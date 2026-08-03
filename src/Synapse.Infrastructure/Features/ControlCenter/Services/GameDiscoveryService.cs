@@ -110,10 +110,18 @@ public sealed partial class GameDiscoveryService : IGameDiscoveryService
         }
     }
 
-    private static DetectedGame Game(string id, string name, string exe, string launcher, string dir) =>
-        new(id, name, exe, launcher, dir, false, string.IsNullOrWhiteSpace(exe)
+    private static DetectedGame Game(string id, string name, string exe, string launcher, string dir)
+    {
+        var hasTuningAdapter = name.Contains("Apex Legends", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Grand Theft Auto V", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("GTA V", StringComparison.OrdinalIgnoreCase);
+        var summary = string.IsNullOrWhiteSpace(exe)
             ? "Exécutable à confirmer avant l’activation du booster"
-            : "Profil recommandé disponible");
+            : hasTuningAdapter
+                ? "Profil Booster + réglages graphiques vérifiés"
+                : "Profil Booster recommandé disponible";
+        return new DetectedGame(id, name, exe, launcher, dir, false, summary);
+    }
 
     private static string FindLikelyExecutable(string directory, string name)
     {

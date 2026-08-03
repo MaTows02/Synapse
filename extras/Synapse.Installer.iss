@@ -4,7 +4,7 @@
 #define MyAppName "Synapse"
 #define MyAppVersion ""
 #define MyAppPublisher "MaTows"
-#define MyAppURL "https://github.com/Matows/Synapse"
+#define MyAppURL "https://github.com/MaTows02/Synapse"
 #define MyAppExeName "Synapse.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".synapse"

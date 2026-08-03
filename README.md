@@ -2,6 +2,8 @@
 
 **Synapse** est un centre de contrôle et d’optimisation pour Windows 10 et 11, conçu en français par défaut. Le projet réunit la télémétrie temps réel, l’inventaire matériel, l’optimisation des jeux, la maintenance et les réglages Windows dans une application WinUI 3.
 
+[Documentation](docs/CONTROL_CENTER.md) · [Signaler un problème](https://github.com/MaTows02/Synapse/issues/new/choose) · [Contribuer](CONTRIBUTING.md) · [Soutenir le projet](SUPPORT.md)
+
 > Synapse modifie certains paramètres système. Les opérations sensibles affichent une confirmation et peuvent créer un point de restauration. Testez d’abord les changements sur une machine non critique.
 
 ## Fonctions principales
@@ -9,7 +11,7 @@
 ### Tableau de bord temps réel
 
 - Charge CPU, GPU, mémoire et disque, débit réseau et température ACPI lorsqu’elle est exposée.
-- Détection des ventilateurs publiés par Windows/ACPI.
+- Détection automatique des ventilateurs, pompes, hubs ARGB et contrôleurs de refroidissement publiés par ACPI, USB, HID et Plug & Play.
 - Architecture d’adaptateurs pour les contrôleurs de ventilateurs et RGB compatibles.
 - Profils de contrôle persistants, réappliqués au démarrage de Synapse.
 
@@ -20,10 +22,12 @@ Windows ne fournit pas d’API universelle permettant d’écrire sur tous les v
 - Détection des bibliothèques Steam, Epic et des jeux enregistrés dans Windows.
 - Profils par jeu enregistrés localement.
 - Passage optionnel du jeu en priorité haute.
+- Passage temporaire au plan hautes performances et blocage de la mise en veille, avec restauration à la fermeture du jeu.
 - Demande contrôlée d’une résolution de timer à 0,5 ms.
 - Suspension uniquement des processus explicitement cochés par l’utilisateur.
 - Liste interne de processus Windows critiques qui ne peuvent jamais être suspendus.
 - Reprise automatique des processus à la fermeture du jeu.
+- Adaptateurs de réglages vérifiés pour Apex Legends et Grand Theft Auto V, avec sauvegarde et restauration des fichiers de configuration.
 
 ### Informations matérielles
 
@@ -44,6 +48,7 @@ Windows ne fournit pas d’API universelle permettant d’écrire sur tous les v
 
 - 21 contrôles couvrant stockage, SMART, système de fichiers, services, sécurité, pilotes, réseau, température, charge et stabilité.
 - Résultats classés en sain, avertissement, critique, non applicable ou inconnu.
+- Score de santé et filtres par catégorie ou gravité.
 
 ### Optimisations Windows
 
@@ -58,7 +63,7 @@ Prérequis :
 
 - Windows 10 ou 11 x64 ;
 - Visual Studio 2022 ou ultérieur avec les charges de travail « Développement Desktop .NET » et « Développement Desktop en C++ » ;
-- SDK .NET `10.0.102` ;
+- SDK .NET `10.0.302` ;
 - Inno Setup 6 uniquement pour produire l’installateur.
 
 Dans PowerShell :

@@ -25,7 +25,19 @@ public sealed record DeviceControlCapability(
     bool CanControlFan,
     bool CanControlRgb,
     string Provider,
-    string Status);
+    string Status,
+    DeviceControlKind Kind = DeviceControlKind.Other,
+    string Connection = "Inconnue",
+    string DetectionMethod = "Windows");
+
+public enum DeviceControlKind
+{
+    Fan,
+    Pump,
+    RgbController,
+    CoolingController,
+    Other
+}
 
 public sealed record HardwareComponent(
     string Category,
@@ -82,13 +94,38 @@ public sealed record GameOptimizationProfile(
     bool HighPriority,
     bool RequestLowLatencyTimer,
     IReadOnlyList<BoosterProcessRule> ProcessRules,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    bool UseHighPerformancePowerPlan = false,
+    bool KeepComputerAwake = true);
 
 public sealed record BoosterSession(
     string GameId,
     DateTimeOffset StartedAt,
     IReadOnlyList<int> SuspendedProcessIds,
     uint? GrantedTimerResolution100Ns);
+
+public enum GameTuningControlKind
+{
+    Toggle,
+    Choice
+}
+
+public sealed record GameTuningChoice(string Label, string Value);
+
+public sealed record GameTuningOption(
+    string Id,
+    string Name,
+    string Description,
+    GameTuningControlKind Kind,
+    string CurrentValue,
+    IReadOnlyList<GameTuningChoice> Choices);
+
+public sealed record GameTuningCatalog(
+    string GameId,
+    bool IsSupported,
+    string Status,
+    string ConfigurationPath,
+    IReadOnlyList<GameTuningOption> Options);
 
 public sealed record CleanupOption(
     string Id,

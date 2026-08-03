@@ -35,6 +35,13 @@ public interface IGameBoosterService : IDisposable
     Task StopMonitoringAsync();
 }
 
+public interface IGameTuningService
+{
+    Task<GameTuningCatalog> InspectAsync(DetectedGame game, CancellationToken cancellationToken = default);
+    Task<OperationResult> ApplyAsync(DetectedGame game, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken = default);
+    Task<OperationResult> RestoreAsync(DetectedGame game, CancellationToken cancellationToken = default);
+}
+
 public interface IDeepCleanerService
 {
     IReadOnlyList<CleanupOption> GetOptions();

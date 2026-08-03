@@ -200,13 +200,13 @@ public class PowerServiceTests
     public async Task TryApplySpecialSettingAsync_CorruptPlan_DeletesGhostAndAttemptsImport()
     {
         // Arrange — ghost plan exists with  GUID but wrong name
-        var Guid = "57696e68-616e-6365-506f-776572000000";
+        var synapsePlanGuid = "57696e68-616e-6365-506f-776572000000";
         var setting = MakeSetting(SettingIds.PowerPlanSelection);
 
         var ghostPlan = new PowerPlan
         {
             Name = "Unknown Power Plan",
-            Guid = Guid,
+            Guid = synapsePlanGuid,
             IsActive = false
         };
 
@@ -215,7 +215,7 @@ public class PowerServiceTests
             .ReturnsAsync(new PowerPlanResolutionResult
             {
                 Success = true,
-                Guid = Guid,
+                Guid = synapsePlanGuid,
                 DisplayName = "Synapse Power Plan"
             });
 
@@ -258,7 +258,7 @@ public class PowerServiceTests
 
         // Assert — ghost plan should be deleted
         _powerSchemeOperations.Verify(
-            s => s.DeleteScheme(Guid.Parse(Guid)),
+            s => s.DeleteScheme(Guid.Parse(synapsePlanGuid)),
             Times.AtLeastOnce);
 
         // Should log about the corrupt plan
@@ -276,13 +276,13 @@ public class PowerServiceTests
     public async Task TryApplySpecialSettingAsync_ValidPlan_DoesNotDelete()
     {
         // Arrange — valid  plan exists with correct name
-        var Guid = "57696e68-616e-6365-506f-776572000000";
+        var synapsePlanGuid = "57696e68-616e-6365-506f-776572000000";
         var setting = MakeSetting(SettingIds.PowerPlanSelection);
 
         var validPlan = new PowerPlan
         {
             Name = "Synapse Power Plan",
-            Guid = Guid,
+            Guid = synapsePlanGuid,
             IsActive = false
         };
 
@@ -291,7 +291,7 @@ public class PowerServiceTests
             .ReturnsAsync(new PowerPlanResolutionResult
             {
                 Success = true,
-                Guid = Guid,
+                Guid = synapsePlanGuid,
                 DisplayName = "Synapse Power Plan"
             });
 
@@ -312,7 +312,7 @@ public class PowerServiceTests
 
         // Assert — should NOT delete the valid plan
         _powerSchemeOperations.Verify(
-            s => s.DeleteScheme(Guid.Parse(Guid)),
+            s => s.DeleteScheme(Guid.Parse(synapsePlanGuid)),
             Times.Never);
 
         // Should succeed by just activating the existing plan
@@ -323,14 +323,14 @@ public class PowerServiceTests
     public async Task DiscoverSpecialSettingsAsync_CorruptPlanActive_DeletesGhostAndSwitchesToBalanced()
     {
         // Arrange — ghost  plan is active with wrong name
-        var Guid = "57696e68-616e-6365-506f-776572000000";
+        var synapsePlanGuid = "57696e68-616e-6365-506f-776572000000";
         var balancedGuid = "381b4222-f694-41f0-9685-ff5bb260df2e";
         var settings = new List<SettingDefinition> { MakeSetting(SettingIds.PowerPlanSelection) };
 
         var ghostPlan = new PowerPlan
         {
             Name = "Unknown Power Plan",
-            Guid = Guid,
+            Guid = synapsePlanGuid,
             IsActive = true
         };
 
@@ -355,7 +355,7 @@ public class PowerServiceTests
             .Returns(PowerProf.ERROR_SUCCESS);
 
         _powerSchemeOperations
-            .Setup(s => s.DeleteScheme(Guid.Parse(Guid)))
+            .Setup(s => s.DeleteScheme(Guid.Parse(synapsePlanGuid)))
             .Returns(PowerProf.ERROR_SUCCESS);
 
         // Act
@@ -368,7 +368,7 @@ public class PowerServiceTests
 
         // Should delete the ghost
         _powerSchemeOperations.Verify(
-            s => s.DeleteScheme(Guid.Parse(Guid)),
+            s => s.DeleteScheme(Guid.Parse(synapsePlanGuid)),
             Times.Once);
 
         // Should invalidate cache
@@ -385,13 +385,13 @@ public class PowerServiceTests
     public async Task DiscoverSpecialSettingsAsync_ValidPlanActive_DoesNotDelete()
     {
         // Arrange — valid  plan is active
-        var Guid = "57696e68-616e-6365-506f-776572000000";
+        var synapsePlanGuid = "57696e68-616e-6365-506f-776572000000";
         var settings = new List<SettingDefinition> { MakeSetting(SettingIds.PowerPlanSelection) };
 
         var validPlan = new PowerPlan
         {
             Name = "Synapse Power Plan",
-            Guid = Guid,
+            Guid = synapsePlanGuid,
             IsActive = true
         };
 
@@ -413,19 +413,19 @@ public class PowerServiceTests
 
         // Should report  as active
         result[SettingIds.PowerPlanSelection]["ActivePowerPlan"].Should().Be("Synapse Power Plan");
-        result[SettingIds.PowerPlanSelection]["ActivePowerPlanGuid"].Should().Be(Guid);
+        result[SettingIds.PowerPlanSelection]["ActivePowerPlanGuid"].Should().Be(synapsePlanGuid);
     }
 
     // Sets up an existing-on-system  plan so a config-import dictionary apply reaches
     // the IsPowerPlan branch (which decides whether to re-apply recommended settings).
     private (SettingDefinition setting, object value, Mock<ISettingApplicationService> apply) ArrangePlanImport()
     {
-        var Guid = "57696e68-616e-6365-506f-776572000000";
+        var synapsePlanGuid = "57696e68-616e-6365-506f-776572000000";
         var setting = MakeSetting(SettingIds.PowerPlanSelection);
 
         var value = new Dictionary<string, object>
         {
-            ["Guid"] = Guid,
+            ["Guid"] = synapsePlanGuid,
             ["Name"] = "Synapse Power Plan",
         };
 
@@ -439,7 +439,7 @@ public class PowerServiceTests
             .Setup(s => s.GetAvailablePowerPlansAsync())
             .ReturnsAsync(new List<PowerPlan>
             {
-                new() { Name = "Synapse Power Plan", Guid = Guid, IsActive = false }
+                new() { Name = "Synapse Power Plan", Guid = synapsePlanGuid, IsActive = false }
             });
 
         _powerSchemeOperations

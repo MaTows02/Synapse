@@ -66,7 +66,7 @@ public class VersionServiceTests
         var releaseJson = JsonSerializer.Serialize(new
         {
             tag_name = "v99.12.31",
-            html_url = "https://github.com/Matows/Synapse/releases/tag/v99.12.31",
+            html_url = "https://github.com/MaTows02/Synapse/releases/tag/v99.12.31",
             published_at = "2099-12-31T00:00:00Z"
         });
 
@@ -92,7 +92,7 @@ public class VersionServiceTests
         var releaseJson = JsonSerializer.Serialize(new
         {
             tag_name = "v0.0.0",
-            html_url = "https://github.com/Matows/Synapse/releases/tag/v0.0.0",
+            html_url = "https://github.com/MaTows02/Synapse/releases/tag/v0.0.0",
             published_at = "2000-01-01T00:00:00Z"
         });
 
@@ -149,7 +149,7 @@ public class VersionServiceTests
         var releaseJson = JsonSerializer.Serialize(new
         {
             tag_name = "v99.06.15-beta",
-            html_url = "https://github.com/Matows/Synapse/releases/tag/v99.06.15-beta",
+            html_url = "https://github.com/MaTows02/Synapse/releases/tag/v99.06.15-beta",
             published_at = "2099-06-15T00:00:00Z"
         });
 

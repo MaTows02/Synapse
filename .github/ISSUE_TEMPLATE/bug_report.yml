@@ -1,0 +1,48 @@
+name: Signaler un bug
+description: Signaler un comportement reproductible dans Synapse.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Merci de ne pas inclure de numéro de série, nom de compte ou autre donnée personnelle.
+  - type: input
+    id: version
+    attributes:
+      label: Version de Synapse
+      placeholder: ex. 26.08.03
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Version de Windows
+      placeholder: ex. Windows 11 25H2, build 26200
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes de reproduction
+      placeholder: Décrivez les actions exactes dans l’ordre.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Résultat attendu
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Résultat obtenu et journaux utiles
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Confidentialité
+      options:
+        - label: J’ai retiré les données personnelles et numéros de série des captures et journaux.
+          required: true
