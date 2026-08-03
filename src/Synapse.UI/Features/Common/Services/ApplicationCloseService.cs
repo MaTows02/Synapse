@@ -1,0 +1,192 @@
+using System;
+using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
+using Synapse.Core.Features.Common.Enums;
+using Synapse.Core.Features.Common.Interfaces;
+using Synapse.Core.Features.Common.Models;
+
+namespace Synapse.UI.Features.Common.Services;
+
+public class ApplicationCloseService : IApplicationCloseService
+{
+    private readonly ILogService _logService;
+    private readonly ITaskProgressService _taskProgressService;
+    private readonly IUserPreferencesService _userPreferencesService;
+    private readonly IDialogService _dialogService;
+
+    public Func<Task>? BeforeShutdown { get; set; }
+
+    // Terminates the process. Replaced in tests so the test host survives.
+    public Action ShutdownAction { get; set; } = DefaultShutdown;
+
+    private static void DefaultShutdown()
+    {
+        try
+        {
+            Application.Current.Exit();
+        }
+        catch
+        {
+            Environment.Exit(0);
+        }
+    }
+
+    public ApplicationCloseService(
+        ILogService logService,
+        ITaskProgressService taskProgressService,
+        IUserPreferencesService userPreferencesService,
+        IDialogService dialogService)
+    {
+        _logService = logService ?? throw new ArgumentNullException(nameof(logService));
+        _taskProgressService = taskProgressService ?? throw new ArgumentNullException(nameof(taskProgressService));
+        _userPreferencesService = userPreferencesService ?? throw new ArgumentNullException(nameof(userPreferencesService));
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+    }
+
+    public async Task<OperationResult> CheckOperationsAndCloseAsync()
+    {
+        try
+        {
+            if (BeforeShutdown != null)
+            {
+                try
+                {
+                    await BeforeShutdown.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    _logService.LogError($"Error running cleanup tasks: {ex.Message}", ex);
+                }
+            }
+
+            if (_taskProgressService.IsTaskRunning)
+            {
+                string currentOperation = _taskProgressService.CurrentStatusText ?? "an operation";
+
+                _logService.LogInformation($"Close requested while operation in progress: {currentOperation}");
+
+                var confirmed = (await _dialogService.ShowConfirmationAsync(new ConfirmationRequest
+                {
+                    Message = $"The following operation is still running:\n\n{currentOperation}\n\n" +
+                              $"Closing now may leave incomplete files or mounted drives.\n\n" +
+                              $"Cancel this operation and close ?",
+                    Title = "Warning: Operation in Progress",
+                    ConfirmButtonText = "Yes, Close",
+                    CancelButtonText = "Cancel",
+                })).Confirmed;
+
+                if (!confirmed)
+                {
+                    _logService.LogInformation("User cancelled application close due to running operation");
+                    return OperationResult.Failed("User cancelled application close");
+                }
+
+                _logService.LogInformation("User confirmed close, cancelling operation...");
+                _taskProgressService.CancelCurrentTask();
+            }
+
+            await CloseApplicationWithSupportDialogAsync();
+            return OperationResult.Succeeded();
+        }
+        catch (Exception ex)
+        {
+            _logService.LogError($"Error in CheckOperationsAndCloseAsync: {ex.Message}", ex);
+
+            try
+            {
+                await CloseApplicationWithSupportDialogAsync();
+            }
+            catch
+            {
+                ShutdownAction();
+            }
+            return OperationResult.Succeeded();
+        }
+    }
+
+    private async Task CloseApplicationWithSupportDialogAsync()
+    {
+        try
+        {
+            _logService.LogInformation("Closing application with support dialog check");
+
+            bool showDialog = await ShouldShowSupportDialogAsync();
+
+            if (showDialog)
+            {
+                _logService.LogInformation("Showing sponsors dialog");
+
+                // The sponsors builder launches the store URL itself on a support
+                // click, so the close service only awaits the dialog — it does not
+                // open any URL. SupportClicked is intentionally ignored here.
+                var (supportClicked, dontShowAgain) = await _dialogService.ShowSponsorsDialogAsync(SponsorsDialogMode.Exit);
+
+                _logService.LogInformation($"Sponsors dialog completed with SupportClicked: {supportClicked}, DontShowAgain: {dontShowAgain}");
+
+                if (dontShowAgain)
+                {
+                    _logService.LogInformation("Saving DontShowSupport preference");
+                    await SaveDontShowSupportPreferenceAsync(true);
+                }
+            }
+            else
+            {
+                _logService.LogInformation("Skipping sponsors dialog due to user preference");
+            }
+
+            _logService.LogInformation("Shutting down application");
+            ShutdownAction();
+        }
+        catch (Exception ex)
+        {
+            _logService.LogError($"Error in CloseApplicationWithSupportDialogAsync: {ex.Message}", ex);
+            ShutdownAction();
+        }
+    }
+
+    private async Task<bool> ShouldShowSupportDialogAsync()
+    {
+        try
+        {
+            _logService.LogInformation("Checking DontShowSupport preference");
+
+            bool dontShow = await _userPreferencesService.GetPreferenceAsync("DontShowSupport", false);
+
+            if (dontShow)
+            {
+                _logService.LogInformation("DontShowSupport is set to true, skipping dialog");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logService.LogError($"Error checking sponsors dialog preference: {ex.Message}", ex);
+            return true;
+        }
+    }
+
+    private async Task SaveDontShowSupportPreferenceAsync(bool dontShow)
+    {
+        try
+        {
+            _logService.LogInformation($"Saving DontShowSupport preference: {dontShow}");
+
+            var result = await _userPreferencesService.SetPreferenceAsync("DontShowSupport", dontShow);
+
+            if (result.Success)
+            {
+                _logService.LogInformation("Successfully saved DontShowSupport preference");
+            }
+            else
+            {
+                _logService.LogError("Failed to save DontShowSupport preference");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logService.LogError($"Error saving DontShowSupport preference: {ex.Message}", ex);
+        }
+    }
+}

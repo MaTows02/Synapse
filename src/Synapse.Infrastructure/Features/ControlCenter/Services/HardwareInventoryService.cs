@@ -1,0 +1,146 @@
+using System.Management;
+using Microsoft.Win32;
+using Synapse.Core.Features.ControlCenter.Interfaces;
+using Synapse.Core.Features.ControlCenter.Models;
+
+namespace Synapse.Infrastructure.Features.ControlCenter.Services;
+
+public sealed class HardwareInventoryService : IHardwareInventoryService
+{
+    public Task<HardwareInventory> CollectAsync(CancellationToken cancellationToken = default) =>
+        Task.Run(() => Collect(cancellationToken), cancellationToken);
+
+    private static HardwareInventory Collect(CancellationToken cancellationToken)
+    {
+        var components = new List<HardwareComponent>();
+        AddComponents(components, "Processeur", "SELECT Name, Manufacturer, ProcessorId, MaxClockSpeed, NumberOfCores, NumberOfLogicalProcessors FROM Win32_Processor", item =>
+            Component("Processeur", item, item["Name"], item["Manufacturer"], item["ProcessorId"], "", "Détecté",
+                ("Fréquence max", $"{item["MaxClockSpeed"]} MHz"), ("Cœurs", item["NumberOfCores"]), ("Threads", item["NumberOfLogicalProcessors"])));
+        AddComponents(components, "Carte graphique", "SELECT Name, AdapterCompatibility, DriverVersion, AdapterRAM, VideoProcessor, CurrentHorizontalResolution, CurrentVerticalResolution FROM Win32_VideoController", item =>
+            Component("Carte graphique", item, item["Name"], item["AdapterCompatibility"], item["VideoProcessor"], "", item["DriverVersion"], "Détecté",
+                ("Mémoire annoncée", FormatBytes(item["AdapterRAM"])), ("Résolution", $"{item["CurrentHorizontalResolution"]}×{item["CurrentVerticalResolution"]}")));
+        AddComponents(components, "Carte mère", "SELECT Product, Manufacturer, Version, SerialNumber FROM Win32_BaseBoard", item =>
+            Component("Carte mère", item, item["Product"], item["Manufacturer"], item["Product"], item["Version"], "", "Détecté", ("Numéro de série", Blur(item["SerialNumber"]))));
+        AddComponents(components, "Mémoire", "SELECT Manufacturer, PartNumber, Capacity, Speed, ConfiguredClockSpeed, SMBIOSMemoryType FROM Win32_PhysicalMemory", item =>
+            Component("Mémoire", item, $"{FormatBytes(item["Capacity"])} {item["PartNumber"]}".Trim(), item["Manufacturer"], item["PartNumber"], "", "", "Détecté",
+                ("Vitesse SPD", $"{item["Speed"]} MT/s"), ("Vitesse active", $"{item["ConfiguredClockSpeed"]} MT/s"))));
+        AddComponents(components, "Stockage", "SELECT Model, Manufacturer, FirmwareRevision, Size, InterfaceType, SerialNumber FROM Win32_DiskDrive", item =>
+            Component("Stockage", item, item["Model"], item["Manufacturer"], item["Model"], item["FirmwareRevision"], "", "Détecté",
+                ("Capacité", FormatBytes(item["Size"])), ("Interface", item["InterfaceType"]), ("Numéro de série", Blur(item["SerialNumber"]))));
+        AddComponents(components, "BIOS/UEFI", "SELECT Manufacturer, SMBIOSBIOSVersion, ReleaseDate, SerialNumber FROM Win32_BIOS", item =>
+            Component("BIOS/UEFI", item, "Firmware système", item["Manufacturer"], "BIOS/UEFI", item["SMBIOSBIOSVersion"], "", "Détecté",
+                ("Date", FormatManagementDate(item["ReleaseDate"])), ("Numéro de série", Blur(item["SerialNumber"]))));
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var technologies = CollectTechnologies();
+        var driverUpdates = CountAvailableDriverUpdates();
+        return new HardwareInventory(DateTimeOffset.Now, components, technologies, driverUpdates);
+    }
+
+    private static IReadOnlyList<TechnologyStatus> CollectTechnologies()
+    {
+        var secureBoot = ReadDword(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\SecureBoot\State", "UEFISecureBootEnabled");
+        var memoryIntegrity = ReadDword(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity", "Enabled");
+        var virtualization = QueryAny("root\\CIMV2", "SELECT VirtualizationFirmwareEnabled FROM Win32_Processor", "VirtualizationFirmwareEnabled");
+        var tpm = QueryAny("root\\CIMV2\\Security\\MicrosoftTpm", "SELECT IsEnabled_InitialValue FROM Win32_Tpm", "IsEnabled_InitialValue");
+        var memoryProfile = DetectMemoryProfile();
+
+        return new[]
+        {
+            Technology("secure-boot", "Démarrage sécurisé", secureBoot, "Clé d’état UEFI Windows"),
+            Technology("memory-integrity", "Intégrité de la mémoire (HVCI)", memoryIntegrity, "Stratégie Device Guard"),
+            Technology("virtualization", "Virtualisation matérielle", virtualization, "Firmware via Win32_Processor"),
+            Technology("tpm", "TPM", tpm, "Fournisseur TPM Windows"),
+            new TechnologyStatus("memory-profile", "Profil mémoire XMP/EXPO", memoryProfile.State, memoryProfile.Detail, "Vitesses SPD et configurée via SMBIOS"),
+            new TechnologyStatus("resizable-bar", "Resizable BAR / Smart Access Memory", TechnologyState.Unknown,
+                "Le pilote graphique ne publie pas un état standard fiable. Vérification proposée dans le panneau NVIDIA/AMD/Intel.", "API constructeur requise"),
+            new TechnologyStatus("above-4g", "Décodage Above 4G", TechnologyState.Unknown,
+                "Ce réglage UEFI n’est pas exposé de façon standard par Windows.", "Firmware constructeur requis")
+        };
+    }
+
+    private static (TechnologyState State, string Detail) DetectMemoryProfile()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher("SELECT Speed, ConfiguredClockSpeed FROM Win32_PhysicalMemory");
+            using var results = searcher.Get();
+            var modules = results.Cast<ManagementObject>().ToList();
+            if (modules.Count == 0) return (TechnologyState.Unknown, "Aucune barrette publiée par SMBIOS.");
+            var active = modules.Any(x => Convert.ToInt32(x["ConfiguredClockSpeed"] ?? 0) > Convert.ToInt32(x["Speed"] ?? 0));
+            return active
+                ? (TechnologyState.Enabled, "La fréquence active dépasse la vitesse SPD publiée ; un profil mémoire semble actif.")
+                : (TechnologyState.Unknown, "Fréquence active lue, mais XMP et EXPO ne peuvent pas être distingués de façon fiable.");
+        }
+        catch (ManagementException) { return (TechnologyState.Unknown, "Information SMBIOS indisponible."); }
+    }
+
+    private static int CountAvailableDriverUpdates()
+    {
+        try
+        {
+            var sessionType = Type.GetTypeFromProgID("Microsoft.Update.Session");
+            if (sessionType is null) return -1;
+            dynamic session = Activator.CreateInstance(sessionType)!;
+            dynamic searcher = session.CreateUpdateSearcher();
+            dynamic result = searcher.Search("IsInstalled=0 and IsHidden=0 and Type='Driver'");
+            return (int)result.Updates.Count;
+        }
+        catch { return -1; }
+    }
+
+    private static HardwareComponent Component(string category, ManagementObject _, object? name, object? manufacturer, object? model,
+        object? version, object? driver, object? status, params (string Key, object? Value)[] details) =>
+        new(category, Text(name), Text(manufacturer), Text(model), Text(version), Text(driver), Text(status),
+            details.ToDictionary(x => x.Key, x => Text(x.Value)));
+
+    private static void AddComponents(List<HardwareComponent> target, string _, string query, Func<ManagementObject, HardwareComponent> factory)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(query);
+            using var results = searcher.Get();
+            target.AddRange(results.Cast<ManagementObject>().Select(factory));
+        }
+        catch (ManagementException) { }
+    }
+
+    private static TechnologyStatus Technology(string id, string name, bool? enabled, string method) =>
+        new(id, name, enabled is true ? TechnologyState.Enabled : enabled is false ? TechnologyState.Disabled : TechnologyState.Unknown,
+            enabled is true ? "Activé" : enabled is false ? "Désactivé" : "État non disponible", method);
+
+    private static bool? ReadDword(RegistryKey hive, string path, string name)
+    {
+        using var key = hive.OpenSubKey(path);
+        return key?.GetValue(name) is int value ? value != 0 : null;
+    }
+
+    private static bool? QueryAny(string scope, string query, string property)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(scope, query);
+            using var results = searcher.Get();
+            foreach (ManagementObject item in results)
+                if (item[property] is bool value) return value;
+        }
+        catch (ManagementException) { }
+        return null;
+    }
+
+    private static string Text(object? value) => string.IsNullOrWhiteSpace(value?.ToString()) ? "Non disponible" : value.ToString()!.Trim();
+    private static string FormatManagementDate(object? value)
+    {
+        var text = value?.ToString();
+        if (string.IsNullOrWhiteSpace(text)) return "Non disponible";
+        try { return ManagementDateTimeConverter.ToDateTime(text).ToString("d"); }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or FormatException) { return "Non disponible"; }
+    }
+
+    private static string Blur(object? value)
+    {
+        var text = Text(value);
+        return text.Length < 5 || text == "Non disponible" ? text : $"••••{text[^4..]}";
+    }
+    private static string FormatBytes(object? value) => value is null ? "Non disponible" : $"{Convert.ToDouble(value) / 1024 / 1024 / 1024:N1} Go";
+}
