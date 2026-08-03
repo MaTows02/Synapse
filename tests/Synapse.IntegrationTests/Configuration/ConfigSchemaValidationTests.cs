@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
+using Synapse.Core.Features.Common.Constants;
 using Synapse.Core.Features.Common.Models;
 using Synapse.IntegrationTests.Helpers;
 using Xunit;
@@ -9,7 +10,7 @@ using Xunit;
 namespace Synapse.IntegrationTests.Configuration;
 
 /// <summary>
-/// Validates that all embedded . config files conform to the ConfigurationItem
+/// Validates that all embedded .synapse config files conform to the ConfigurationItem
 /// schema — catching type mismatches (e.g. string vs string[]) that would cause
 /// deserialization failures or silent data loss at runtime.
 /// </summary>
@@ -45,7 +46,7 @@ public class ConfigSchemaValidationTests
 
     public static IEnumerable<object[]> ConfigFiles()
     {
-        foreach (var file in Directory.GetFiles(ConfigDir, "*."))
+        foreach (var file in Directory.GetFiles(ConfigDir, ConfigFileConstants.FilePattern))
         {
             yield return new object[] { Path.GetFileName(file) };
         }
