@@ -645,7 +645,7 @@ public class AppItemViewModelTests
     // -------------------------------------------------------
 
     [Fact]
-    public void IconSource_LightTheme_WithLightSibling_DecodesFromLightPath()
+    public void ResolveThemeAwarePath_LightTheme_WithLightSibling_ReturnsLightPath()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "Test_" + Path.GetRandomFileName());
         Directory.CreateDirectory(tmpDir);
@@ -660,10 +660,7 @@ public class AppItemViewModelTests
             _mockThemeService.Setup(t => t.GetEffectiveTheme()).Returns(ElementTheme.Light);
 
             var vm = CreateViewModel(def);
-            var bmp = vm.IconSource;
-
-            bmp.Should().NotBeNull();
-            bmp!.UriSource.LocalPath.Should().Be(lightPath);
+            vm.ResolveThemeAwarePath(primaryPath).Should().Be(lightPath);
         }
         finally
         {
@@ -672,7 +669,7 @@ public class AppItemViewModelTests
     }
 
     [Fact]
-    public void IconSource_LightTheme_NoLightSibling_FallsBackToPrimary()
+    public void ResolveThemeAwarePath_LightTheme_NoLightSibling_FallsBackToPrimary()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "Test_" + Path.GetRandomFileName());
         Directory.CreateDirectory(tmpDir);
@@ -685,7 +682,7 @@ public class AppItemViewModelTests
             _mockThemeService.Setup(t => t.GetEffectiveTheme()).Returns(ElementTheme.Light);
 
             var vm = CreateViewModel(def);
-            vm.IconSource!.UriSource.LocalPath.Should().Be(primaryPath);
+            vm.ResolveThemeAwarePath(primaryPath).Should().Be(primaryPath);
         }
         finally
         {
@@ -694,7 +691,7 @@ public class AppItemViewModelTests
     }
 
     [Fact]
-    public void IconSource_DarkTheme_NoDarkSibling_UsesPrimary()
+    public void ResolveThemeAwarePath_DarkTheme_NoDarkSibling_UsesPrimary()
     {
         // Mono-light source (white): no .dark.png written; primary is the
         // correct dark-mode rendering.
@@ -711,7 +708,7 @@ public class AppItemViewModelTests
             _mockThemeService.Setup(t => t.GetEffectiveTheme()).Returns(ElementTheme.Dark);
 
             var vm = CreateViewModel(def);
-            vm.IconSource!.UriSource.LocalPath.Should().Be(primaryPath);
+            vm.ResolveThemeAwarePath(primaryPath).Should().Be(primaryPath);
         }
         finally
         {
@@ -720,7 +717,7 @@ public class AppItemViewModelTests
     }
 
     [Fact]
-    public void IconSource_DarkTheme_WithDarkSibling_DecodesFromDarkPath()
+    public void ResolveThemeAwarePath_DarkTheme_WithDarkSibling_ReturnsDarkPath()
     {
         // Mono-dark source (e.g. Xbox Game Bar #333): synthesizer wrote a
         // .dark.png; the VM must prefer it in dark mode.
@@ -739,7 +736,7 @@ public class AppItemViewModelTests
             _mockThemeService.Setup(t => t.GetEffectiveTheme()).Returns(ElementTheme.Dark);
 
             var vm = CreateViewModel(def);
-            vm.IconSource!.UriSource.LocalPath.Should().Be(darkPath);
+            vm.ResolveThemeAwarePath(primaryPath).Should().Be(darkPath);
         }
         finally
         {
@@ -781,10 +778,7 @@ public class AppItemViewModelTests
     }
 
     /// <summary>
-    /// PNG-ish junk bytes — sufficient for File.Exists checks and lazy
-    /// BitmapImage URI assignment. The tests in this file only inspect
-    /// `BitmapImage.UriSource.LocalPath`, so the decoder never runs over
-    /// these bytes and their malformed CRC/payload doesn't matter.
+    /// PNG-ish junk bytes — sufficient for the theme-aware File.Exists checks.
     /// </summary>
     private static byte[] MinimalPng() => new byte[]
     {

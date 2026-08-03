@@ -139,7 +139,7 @@ public partial class AppItemViewModel : ObservableObject, ISelectable, IDisposab
     // different assembly) — kept inline as one-liners to avoid crossing the
     // assembly boundary for static string derivation. If the naming
     // convention ever changes, update both sites.
-    private string ResolveThemeAwarePath(string basePath)
+    internal string ResolveThemeAwarePath(string basePath)
     {
         var stem = Path.ChangeExtension(basePath, null);
 

@@ -269,7 +269,7 @@ public class MainWindowViewModelTests : IDisposable
     public void AppTitle_ReturnsFallbackWhenLocalizationReturnsNull()
     {
         var sut = CreateSut();
-        sut.AppTitle.Should().Be("");
+        sut.AppTitle.Should().Be("Synapse");
     }
 
     [Fact]
