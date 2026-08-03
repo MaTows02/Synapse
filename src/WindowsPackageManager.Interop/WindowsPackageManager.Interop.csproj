@@ -16,7 +16,9 @@
   https://github.com/microsoft/CsWinRT/blob/master/nuget/readme.md
   -->
   <PropertyGroup>
-    <CsWinRTWindowsMetadata>10.0.19041.0</CsWinRTWindowsMetadata>
+    <!-- Select a Windows SDK that is actually installed. The target framework and
+         SupportedOSPlatformVersion still preserve Windows 10 2004 compatibility. -->
+    <CsWinRTWindowsMetadata>sdk</CsWinRTWindowsMetadata>
     <CsWinRTIncludes>Microsoft.Management.Deployment</CsWinRTIncludes>
   </PropertyGroup>
 

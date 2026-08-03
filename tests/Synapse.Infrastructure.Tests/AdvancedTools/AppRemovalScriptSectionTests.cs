@@ -229,7 +229,7 @@ public class AppRemovalScriptSectionTests
 
         var output = sb.ToString();
         output.Should().Contain("Register-ScheduledTask");
-        output.Should().Contain("");
+        output.Should().Contain("New-ScheduledTaskAction");
     }
 
     // ---------------------------------------------------------------

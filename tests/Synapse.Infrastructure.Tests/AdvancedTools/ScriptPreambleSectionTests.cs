@@ -20,7 +20,7 @@ public class ScriptPreambleSectionTests
 
         var output = sb.ToString();
         output.Should().Contain(".SYNOPSIS");
-        output.Should().Contain("");
+        output.Should().Contain(".DESCRIPTION");
     }
 
     [Fact]
