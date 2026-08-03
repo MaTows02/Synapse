@@ -23,7 +23,7 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
             Component("Carte mère", item, item["Product"], item["Manufacturer"], item["Product"], item["Version"], "", "Détecté", ("Numéro de série", Blur(item["SerialNumber"]))));
         AddComponents(components, "Mémoire", "SELECT Manufacturer, PartNumber, Capacity, Speed, ConfiguredClockSpeed, SMBIOSMemoryType FROM Win32_PhysicalMemory", item =>
             Component("Mémoire", item, $"{FormatBytes(item["Capacity"])} {item["PartNumber"]}".Trim(), item["Manufacturer"], item["PartNumber"], "", "", "Détecté",
-                ("Vitesse SPD", $"{item["Speed"]} MT/s"), ("Vitesse active", $"{item["ConfiguredClockSpeed"]} MT/s"))));
+                ("Vitesse SPD", $"{item["Speed"]} MT/s"), ("Vitesse active", $"{item["ConfiguredClockSpeed"]} MT/s")));
         AddComponents(components, "Stockage", "SELECT Model, Manufacturer, FirmwareRevision, Size, InterfaceType, SerialNumber FROM Win32_DiskDrive", item =>
             Component("Stockage", item, item["Model"], item["Manufacturer"], item["Model"], item["FirmwareRevision"], "", "Détecté",
                 ("Capacité", FormatBytes(item["Size"])), ("Interface", item["InterfaceType"]), ("Numéro de série", Blur(item["SerialNumber"]))));
