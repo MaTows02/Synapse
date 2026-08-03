@@ -18,7 +18,7 @@ public class ScriptMigrationServiceTests
     private readonly ScriptMigrationService _service;
 
     private const string FakeLocalAppData = @"C:\Users\TestUser\AppData\Local";
-    private const string FakeOldScriptsPath = @"C:\Users\TestUser\AppData\Local\\Scripts";
+    private const string FakeOldScriptsPath = @"C:\Users\TestUser\AppData\Local\Synapse\Scripts";
 
     public ScriptMigrationServiceTests()
     {

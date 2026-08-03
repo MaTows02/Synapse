@@ -265,7 +265,7 @@ public class VersionServiceTests
     public void BuildInstallerArgs_PathWithSpaces_QuotesDirArgCorrectly()
     {
         // Arrange — the actual scenario from issue #649's reporter
-        var customPath = @"D:\Windows Tweaks\";
+        var customPath = @"D:\Windows Tweaks";
 
         // Act
         var args = VersionService.BuildInstallerArgs(customPath, isPortable: false);

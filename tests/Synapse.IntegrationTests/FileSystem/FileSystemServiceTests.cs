@@ -167,7 +167,7 @@ public class FileSystemServiceTests : IClassFixture<TempDirectoryFixture>
         // Act & Assert
         _service.GetFileName(@"C:\Users\Test\Documents\config.json").Should().Be("config.json");
         _service.GetFileNameWithoutExtension(@"C:\path\to\file.txt").Should().Be("file");
-        _service.GetExtension(@"C:\path\to\file.").Should().Be(".");
+        _service.GetExtension(@"C:\path\to\file.").Should().BeEmpty();
     }
 
     [Fact]

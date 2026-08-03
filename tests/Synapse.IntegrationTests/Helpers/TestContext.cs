@@ -17,7 +17,7 @@ public static class TestContext
     private static string FindSolutionDir([CallerFilePath] string callerPath = "")
     {
         var dir = Path.GetDirectoryName(callerPath);
-        while (dir != null && !File.Exists(Path.Combine(dir, ".sln")))
+        while (dir != null && !Directory.EnumerateFiles(dir, "*.sln").Any())
         {
             dir = Directory.GetParent(dir)?.FullName;
         }
