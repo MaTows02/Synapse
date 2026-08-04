@@ -523,7 +523,7 @@
                             </Border>
 
                             <Border Style="{StaticResource CardStyle}" Padding="8">
-                                <RadioButtons Orientation="Horizontal" SelectedIndex="0">
+                                <RadioButtons MaxColumns="5" SelectedIndex="0">
                                     <RadioButton x:Name="SystemHealthModeButton" Content="Santé système" Tag="System" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
                                     <RadioButton Content="Nettoyage" Tag="Cleanup" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
                                     <RadioButton Content="Santé réseau" Tag="Network" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
