@@ -8,8 +8,47 @@ namespace Synapse.Infrastructure.Features.ControlCenter.Services;
 
 public sealed partial class GameDiscoveryService : IGameDiscoveryService
 {
-    public Task<IReadOnlyList<DetectedGame>> DiscoverAsync(CancellationToken cancellationToken = default) =>
-        Task.Run<IReadOnlyList<DetectedGame>>(() => Discover(cancellationToken), cancellationToken);
+    private readonly string _manualGamesPath = SynapseDataPaths.GetPath("manual-games.json");
+
+    public async Task<IReadOnlyList<DetectedGame>> DiscoverAsync(CancellationToken cancellationToken = default)
+    {
+        var discovered = await Task.Run(() => Discover(cancellationToken), cancellationToken).ConfigureAwait(false);
+        var manual = await SynapseJson.ReadAsync<IReadOnlyList<DetectedGame>>(
+            _manualGamesPath, Array.Empty<DetectedGame>(), cancellationToken).ConfigureAwait(false);
+        return discovered.Concat(manual)
+            .Where(game => !string.IsNullOrWhiteSpace(game.ExecutablePath) && File.Exists(game.ExecutablePath))
+            .GroupBy(game => game.ExecutablePath, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(game => game.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    public async Task<DetectedGame> AddManualAsync(string executablePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath) ||
+            !string.Equals(Path.GetExtension(executablePath), ".exe", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Sélectionnez un exécutable Windows valide.", nameof(executablePath));
+
+        var fullPath = Path.GetFullPath(executablePath);
+        var versionInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(fullPath);
+        var name = versionInfo.ProductName;
+        if (string.IsNullOrWhiteSpace(name)) name = Path.GetFileNameWithoutExtension(fullPath);
+        var game = new DetectedGame(
+            $"manual:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(fullPath)))[..16]}",
+            name,
+            fullPath,
+            "Ajout manuel",
+            Path.GetDirectoryName(fullPath) ?? string.Empty,
+            false,
+            "Profil Booster manuel disponible");
+
+        var games = (await SynapseJson.ReadAsync<IReadOnlyList<DetectedGame>>(
+            _manualGamesPath, Array.Empty<DetectedGame>(), cancellationToken).ConfigureAwait(false)).ToList();
+        games.RemoveAll(item => string.Equals(item.ExecutablePath, fullPath, StringComparison.OrdinalIgnoreCase));
+        games.Add(game);
+        await SynapseJson.WriteAsync(_manualGamesPath, games, cancellationToken).ConfigureAwait(false);
+        return game;
+    }
 
     private static IReadOnlyList<DetectedGame> Discover(CancellationToken cancellationToken)
     {

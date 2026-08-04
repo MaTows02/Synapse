@@ -10,6 +10,7 @@ using Synapse.UI.Features.Optimize;
 using Synapse.UI.Features.Settings;
 using Synapse.UI.Features.SoftwareApps;
 using Synapse.UI.Features.ControlCenter;
+using Synapse.UI.Features.Dashboard;
 using Microsoft.UI.Dispatching;
 using System;
 using System.Collections.Generic;
@@ -28,7 +29,12 @@ internal sealed class NavigationRouter
 
     private static readonly Dictionary<string, Type> TagToPageType = new()
     {
-        ["Dashboard"] = typeof(ControlCenterPage),
+        ["Dashboard"] = typeof(DashboardPage),
+        ["GameBooster"] = typeof(ControlCenterPage),
+        ["Hardware"] = typeof(ControlCenterPage),
+        ["DeepCleanup"] = typeof(ControlCenterPage),
+        ["SystemHealth"] = typeof(ControlCenterPage),
+        ["TaskManager"] = typeof(ControlCenterPage),
         ["Settings"] = typeof(SettingsPage),
         ["Optimize"] = typeof(OptimizePage),
         ["Customize"] = typeof(CustomizePage),
@@ -38,7 +44,7 @@ internal sealed class NavigationRouter
 
     private static readonly Dictionary<string, string> PageTypeNameToTag = new()
     {
-        [nameof(ControlCenterPage)] = "Dashboard",
+        [nameof(DashboardPage)] = "Dashboard",
         [nameof(SettingsPage)] = "Settings",
         [nameof(OptimizePage)] = "Optimize",
         [nameof(CustomizePage)] = "Customize",
@@ -76,13 +82,21 @@ internal sealed class NavigationRouter
 
         StartupLogger.Log("NavigationRouter", $"Resolved page type: {pageType.Name}");
 
+        if (frame.CurrentSourcePageType == pageType && frame.Content is ControlCenterPage controlCenter &&
+            tag is "GameBooster" or "Hardware" or "DeepCleanup" or "SystemHealth" or "TaskManager")
+        {
+            controlCenter.OpenCategory(tag);
+            return;
+        }
+
         if (frame.CurrentSourcePageType != pageType)
         {
             try
             {
                 StartupLogger.Log("NavigationRouter", $"Navigating to {pageType.Name}...");
-                var result = parameter != null
-                    ? frame.Navigate(pageType, parameter)
+                var navigationParameter = parameter ?? (tag is "GameBooster" or "Hardware" or "DeepCleanup" or "SystemHealth" or "TaskManager" ? tag : null);
+                var result = navigationParameter != null
+                    ? frame.Navigate(pageType, navigationParameter)
                     : frame.Navigate(pageType);
                 StartupLogger.Log("NavigationRouter", $"Navigate result: {result}");
 

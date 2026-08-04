@@ -6,6 +6,7 @@ using Synapse.Core.Features.Common.Interfaces;
 using Synapse.Core.Features.SoftwareApps.Models;
 using Synapse.UI.Features.Common.Interfaces;
 using Synapse.UI.Features.SoftwareApps.Models;
+using Synapse.UI.Features.SoftwareApps.Services;
 
 namespace Synapse.UI.Features.SoftwareApps.ViewModels;
 
@@ -54,6 +55,7 @@ public partial class AppItemViewModel : ObservableObject, ISelectable, IDisposab
         OnPropertyChanged(nameof(InstalledStatusTooltip));
         OnPropertyChanged(nameof(ReinstallableStatusTooltip));
         OnPropertyChanged(nameof(CategoryDisplayName));
+        OnPropertyChanged(nameof(Description));
     }
 
     private void OnThemeChanged(object? sender, Theme theme)
@@ -68,7 +70,9 @@ public partial class AppItemViewModel : ObservableObject, ISelectable, IDisposab
 
     public string Name => Definition.Name;
 
-    public string Description => Definition.Description;
+    public string Description => _localizationService.CurrentLanguage?.StartsWith("fr", StringComparison.OrdinalIgnoreCase) == true
+        ? FrenchAppDescriptionTranslator.Translate(Definition.Description, Definition.GroupName ?? string.Empty)
+        : Definition.Description;
     public string GroupName => Definition.GroupName ?? string.Empty;
     public string Id => Definition.Id;
 

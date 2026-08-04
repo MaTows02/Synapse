@@ -41,6 +41,30 @@ public sealed class TaskManagerService : ITaskManagerService
         }
     }, cancellationToken);
 
+    public Task<OperationResult> SetStartupItemEnabledAsync(string itemId, bool enabled, CancellationToken cancellationToken = default) => Task.Run(() =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var parts = itemId.Split('|', 3);
+        if (parts.Length != 3) return OperationResult.Failure("Entrée de démarrage invalide.");
+        var hive = parts[0] == "HKCU" ? Registry.CurrentUser : parts[0] == "HKLM" ? Registry.LocalMachine : null;
+        if (hive is null) return OperationResult.Failure("Source de démarrage non prise en charge.");
+
+        try
+        {
+            var approvedPath = parts[1].Replace("\\Run", "\\Explorer\\StartupApproved\\Run", StringComparison.OrdinalIgnoreCase);
+            using var key = hive.CreateSubKey(approvedPath, writable: true);
+            if (key is null) return OperationResult.Failure("Windows a refusé l’accès à cette entrée.");
+            var state = new byte[12];
+            state[0] = enabled ? (byte)0x02 : (byte)0x03;
+            key.SetValue(parts[2], state, RegistryValueKind.Binary);
+            return OperationResult.Success(enabled ? "Programme réactivé au démarrage." : "Programme désactivé au démarrage.");
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            return OperationResult.Failure($"Modification impossible : {ex.Message}");
+        }
+    }, cancellationToken);
+
     private static IReadOnlyList<TaskProcessInfo> CollectProcesses(CancellationToken cancellationToken)
     {
         var currentProcessId = Environment.ProcessId;
@@ -61,7 +85,8 @@ public sealed class TaskManagerService : ITaskManagerService
                         memory,
                         FormatBytes(memory),
                         process.Responding ? "Actif" : "Ne répond pas",
-                        process.Id != currentProcessId && process.Id > 4 && !ProtectedProcesses.Contains(name)));
+                        process.Id != currentProcessId && process.Id > 4 && !ProtectedProcesses.Contains(name),
+                        SafeExecutablePath(process)));
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
             }
@@ -86,7 +111,11 @@ public sealed class TaskManagerService : ITaskManagerService
             foreach (var valueName in key.GetValueNames())
             {
                 var command = key.GetValue(valueName)?.ToString() ?? "";
-                items.Add(new StartupItemInfo($"{hiveName}|{path}|{valueName}", valueName, command, hiveName == "HKCU" ? "Utilisateur" : "Ordinateur", EstimateImpact(command), true, false));
+                var executablePath = ExtractExecutablePath(command);
+                items.Add(new StartupItemInfo(
+                    $"{hiveName}|{path}|{valueName}", valueName, command,
+                    hiveName == "HKCU" ? "Utilisateur" : "Ordinateur",
+                    EstimateImpact(command), IsStartupItemEnabled(hive, path, valueName), true, executablePath));
             }
         }
         catch (UnauthorizedAccessException) { }
@@ -125,6 +154,35 @@ public sealed class TaskManagerService : ITaskManagerService
     {
         try { return process.MainModule?.FileVersionInfo.FileDescription ?? process.ProcessName; }
         catch { return process.ProcessName; }
+    }
+
+    private static string SafeExecutablePath(Process process)
+    {
+        try { return process.MainModule?.FileName ?? string.Empty; }
+        catch { return string.Empty; }
+    }
+
+    private static string ExtractExecutablePath(string command)
+    {
+        var expanded = Environment.ExpandEnvironmentVariables(command.Trim());
+        if (expanded.StartsWith('"'))
+        {
+            var end = expanded.IndexOf('"', 1);
+            return end > 1 ? expanded[1..end] : string.Empty;
+        }
+        var exe = expanded.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+        return exe >= 0 ? expanded[..(exe + 4)] : string.Empty;
+    }
+
+    private static bool IsStartupItemEnabled(RegistryKey hive, string runPath, string valueName)
+    {
+        try
+        {
+            var approvedPath = runPath.Replace("\\Run", "\\Explorer\\StartupApproved\\Run", StringComparison.OrdinalIgnoreCase);
+            using var key = hive.OpenSubKey(approvedPath);
+            return key?.GetValue(valueName) is not byte[] state || state.Length == 0 || state[0] == 0x02;
+        }
+        catch { return true; }
     }
 
     private static string EstimateImpact(string command)

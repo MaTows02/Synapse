@@ -105,7 +105,8 @@ public sealed record TaskProcessInfo(
     long MemoryBytes,
     string MemoryDisplay,
     string Status,
-    bool CanTerminate);
+    bool CanTerminate,
+    string ExecutablePath = "");
 
 public sealed record StartupItemInfo(
     string Id,
@@ -114,7 +115,8 @@ public sealed record StartupItemInfo(
     string Source,
     string Impact,
     bool IsEnabled,
-    bool CanConfigure);
+    bool CanConfigure,
+    string ExecutablePath = "");
 
 public sealed record WindowsServiceInfo(
     string Id,
@@ -208,7 +210,10 @@ public sealed record InstalledApplication(
     string Publisher,
     string Version,
     string InstallLocation,
-    string UninstallCommand);
+    string UninstallCommand,
+    string IconPath = "",
+    string Importance = "Standard",
+    string ImportanceDetail = "Application utilisateur");
 
 public sealed record UninstallLeftover(string Kind, string Path, long EstimatedBytes, bool SafeToRemove);
 
@@ -219,6 +224,7 @@ public sealed record DeepUninstallPlan(
 
 public enum DiagnosticState
 {
+    NotRun,
     Healthy,
     Warning,
     Critical,
@@ -232,7 +238,18 @@ public sealed record DiagnosticCheckResult(
     string Name,
     DiagnosticState State,
     string Summary,
-    string Recommendation);
+    string Recommendation)
+{
+    public string StateLabel => State switch
+    {
+        DiagnosticState.NotRun => "Non analysé",
+        DiagnosticState.Healthy => "Sain",
+        DiagnosticState.Warning => "À surveiller",
+        DiagnosticState.Critical => "Critique",
+        DiagnosticState.NotApplicable => "Non applicable",
+        _ => "Indisponible"
+    };
+}
 
 public sealed record DiagnosticReport(
     DateTimeOffset GeneratedAt,

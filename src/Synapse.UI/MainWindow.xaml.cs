@@ -456,7 +456,9 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void NavSidebar_MoreMenuClosed(object? sender, EventArgs e)
     {
-        var currentTag = _navigationRouter?.GetTagForCurrentPage(ContentFrame.CurrentSourcePageType);
+        var currentTag = ContentFrame.Content is Features.ControlCenter.ControlCenterPage controlCenter
+            ? controlCenter.CurrentCategory
+            : _navigationRouter?.GetTagForCurrentPage(ContentFrame.CurrentSourcePageType);
         if (!string.IsNullOrEmpty(currentTag))
         {
             NavSidebar.SelectedTag = currentTag;
