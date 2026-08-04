@@ -65,11 +65,71 @@ public sealed record TechnologyStatus(
     string Detail,
     string VerificationMethod);
 
+public sealed record SystemOverview(
+    string OperatingSystem,
+    string Version,
+    string Build,
+    string Architecture,
+    string ComputerName,
+    string UserName,
+    string InstalledOn,
+    string Uptime,
+    string BootMode,
+    string TpmVersion);
+
+public sealed record NetworkAdapterInfo(
+    string Id,
+    string Name,
+    string Description,
+    string ConnectionType,
+    string LocalIpAddress,
+    string MacAddress,
+    string LinkSpeed,
+    string Gateway,
+    string DnsServers,
+    bool IsConnected);
+
 public sealed record HardwareInventory(
     DateTimeOffset CollectedAt,
     IReadOnlyList<HardwareComponent> Components,
     IReadOnlyList<TechnologyStatus> Technologies,
-    int DriversWithUpdatesAvailable);
+    int DriversWithUpdatesAvailable,
+    SystemOverview? System = null,
+    IReadOnlyList<NetworkAdapterInfo>? NetworkAdapters = null,
+    string PublicIpAddress = "Non disponible");
+
+public sealed record TaskProcessInfo(
+    int Id,
+    string Name,
+    string Description,
+    long MemoryBytes,
+    string MemoryDisplay,
+    string Status,
+    bool CanTerminate);
+
+public sealed record StartupItemInfo(
+    string Id,
+    string Name,
+    string Command,
+    string Source,
+    string Impact,
+    bool IsEnabled,
+    bool CanConfigure);
+
+public sealed record WindowsServiceInfo(
+    string Id,
+    string Name,
+    string Description,
+    string StartMode,
+    string State,
+    int ProcessId,
+    bool CanConfigure);
+
+public sealed record TaskManagerSnapshot(
+    DateTimeOffset CollectedAt,
+    IReadOnlyList<TaskProcessInfo> Processes,
+    IReadOnlyList<StartupItemInfo> StartupItems,
+    IReadOnlyList<WindowsServiceInfo> Services);
 
 public sealed record DetectedGame(
     string Id,

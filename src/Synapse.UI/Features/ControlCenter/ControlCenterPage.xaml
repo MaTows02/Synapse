@@ -7,269 +7,562 @@
     Background="Transparent">
 
     <Page.Resources>
+        <SolidColorBrush x:Key="SynapseCyanBrush" Color="#FF35C7F4"/>
+        <SolidColorBrush x:Key="SynapseGreenBrush" Color="#FF21D487"/>
+        <SolidColorBrush x:Key="SynapseAmberBrush" Color="#FFFFB44A"/>
+        <SolidColorBrush x:Key="SynapseRedBrush" Color="#FFFF5D6C"/>
+        <SolidColorBrush x:Key="SoftCyanBrush" Color="#1835C7F4"/>
+        <SolidColorBrush x:Key="SoftGreenBrush" Color="#1821D487"/>
+        <SolidColorBrush x:Key="SoftAmberBrush" Color="#18FFB44A"/>
+        <SolidColorBrush x:Key="SoftRedBrush" Color="#18FF5D6C"/>
+
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="14"/>
-            <Setter Property="Padding" Value="18"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+        <Style x:Key="HeroCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+            <Setter Property="Padding" Value="24"/>
+            <Setter Property="MinHeight" Value="132"/>
         </Style>
         <Style x:Key="MetricCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
-            <Setter Property="MinWidth" Value="175"/>
-            <Setter Property="Margin" Value="0,0,12,12"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="MinHeight" Value="126"/>
+        </Style>
+        <Style x:Key="ActionRowStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+            <Setter Property="Padding" Value="14"/>
+        </Style>
+        <Style x:Key="FlowCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="MinHeight" Value="82"/>
         </Style>
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="19"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="30"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="EyebrowStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="CharacterSpacing" Value="120"/>
+            <Setter Property="Foreground" Value="{StaticResource SynapseCyanBrush}"/>
+        </Style>
         <Style x:Key="MutedTextStyle" TargetType="TextBlock">
-            <Setter Property="Opacity" Value="0.66"/>
+            <Setter Property="Opacity" Value="0.64"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
-        <Style x:Key="ActionRowStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
-            <Setter Property="Padding" Value="14"/>
+        <Style x:Key="CategoryNavigationItemStyle" TargetType="NavigationViewItem">
+            <Setter Property="MinHeight" Value="64"/>
+            <Setter Property="Margin" Value="7,3"/>
+        </Style>
+        <Style x:Key="CleanupOptionCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="12"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
         </Style>
     </Page.Resources>
 
-    <Grid Padding="24,18,24,24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <NavigationView
+        x:Name="CategoryNavigationView"
+        AlwaysShowHeader="False"
+        Background="Transparent"
+        CompactPaneLength="0"
+        IsBackButtonVisible="Collapsed"
+        IsPaneOpen="True"
+        IsPaneToggleButtonVisible="False"
+        IsSettingsVisible="False"
+        OpenPaneLength="264"
+        PaneDisplayMode="Left"
+        Loaded="CategoryNavigationView_Loaded"
+        SelectionChanged="CategoryNavigationView_SelectionChanged">
 
-        <Grid Margin="0,0,0,16">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" Spacing="14">
-                <Image Source="ms-appx:///Assets/AppIcons/Synapse-rocket-white-transparent-bg.png" Width="42" Height="42"/>
+        <NavigationView.PaneHeader>
+            <StackPanel Margin="14,18,14,14" Spacing="3">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Border Width="38" Height="38" CornerRadius="11" Background="{StaticResource SoftCyanBrush}">
+                        <Image Source="ms-appx:///Assets/AppIcons/Synapse-rocket-white-transparent-bg.png" Width="24" Height="24"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="SYNAPSE" FontSize="18" FontWeight="Bold" CharacterSpacing="120"/>
+                        <TextBlock Text="CONTROL CENTER" FontSize="10" Opacity="0.55" CharacterSpacing="90"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Margin="0,16,0,0" Text="CATÉGORIES" FontSize="11" FontWeight="SemiBold" Opacity="0.5" CharacterSpacing="120"/>
+            </StackPanel>
+        </NavigationView.PaneHeader>
+
+        <NavigationView.MenuItems>
+            <NavigationViewItem Tag="GameBooster" Style="{StaticResource CategoryNavigationItemStyle}" AutomationProperties.Name="Game Booster">
+                <NavigationViewItem.Icon><FontIcon Glyph="&#xE7FC;"/></NavigationViewItem.Icon>
                 <StackPanel>
-                    <TextBlock Text="SYNAPSE" FontSize="27" FontWeight="Bold" CharacterSpacing="160"/>
-                    <TextBlock Text="Centre de contrôle, de jeu et de santé Windows" Opacity="0.68" FontSize="14"/>
+                    <TextBlock Text="Game Booster" FontWeight="SemiBold"/>
+                    <TextBlock Text="Jeux et performances" FontSize="11" Opacity="0.55"/>
+                </StackPanel>
+            </NavigationViewItem>
+            <NavigationViewItem Tag="Hardware" Style="{StaticResource CategoryNavigationItemStyle}" AutomationProperties.Name="Matériel">
+                <NavigationViewItem.Icon><FontIcon Glyph="&#xE950;"/></NavigationViewItem.Icon>
+                <StackPanel>
+                    <TextBlock Text="Matériel" FontWeight="SemiBold"/>
+                    <TextBlock Text="Composants et contrôle" FontSize="11" Opacity="0.55"/>
+                </StackPanel>
+            </NavigationViewItem>
+            <NavigationViewItem Tag="DeepCleanup" Style="{StaticResource CategoryNavigationItemStyle}" AutomationProperties.Name="Nettoyage profond">
+                <NavigationViewItem.Icon><FontIcon Glyph="&#xE74D;"/></NavigationViewItem.Icon>
+                <StackPanel>
+                    <TextBlock Text="Nettoyage profond" FontWeight="SemiBold"/>
+                    <TextBlock Text="Fichiers et applications" FontSize="11" Opacity="0.55"/>
+                </StackPanel>
+            </NavigationViewItem>
+            <NavigationViewItem Tag="SystemHealth" Style="{StaticResource CategoryNavigationItemStyle}" AutomationProperties.Name="Santé système">
+                <NavigationViewItem.Icon><FontIcon Glyph="&#xE95E;"/></NavigationViewItem.Icon>
+                <StackPanel>
+                    <TextBlock Text="Santé système" FontWeight="SemiBold"/>
+                    <TextBlock Text="Diagnostics et conseils" FontSize="11" Opacity="0.55"/>
+                </StackPanel>
+            </NavigationViewItem>
+            <NavigationViewItem Tag="TaskManager" Style="{StaticResource CategoryNavigationItemStyle}" AutomationProperties.Name="Gestionnaire des tâches">
+                <NavigationViewItem.Icon><FontIcon Glyph="&#xE9D9;"/></NavigationViewItem.Icon>
+                <StackPanel>
+                    <TextBlock Text="Gestionnaire des tâches" FontWeight="SemiBold"/>
+                    <TextBlock Text="Processus, apps et services" FontSize="11" Opacity="0.55"/>
+                </StackPanel>
+            </NavigationViewItem>
+        </NavigationView.MenuItems>
+
+        <NavigationView.PaneFooter>
+            <StackPanel Margin="14,12,14,18" Spacing="8">
+                <Border CornerRadius="12" Padding="12" Background="{StaticResource SoftGreenBrush}" BorderBrush="#4021D487" BorderThickness="1">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="● PROTECTION ACTIVE" Foreground="{StaticResource SynapseGreenBrush}" FontSize="11" FontWeight="SemiBold"/>
+                        <TextBlock Text="Les actions sensibles créent un point de restauration." FontSize="11" Opacity="0.65" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="Documentation" FontSize="11" Click="OpenDocumentationButton_Click"/>
+                    <Button Content="Support" FontSize="11" Click="OpenSupportButton_Click"/>
                 </StackPanel>
             </StackPanel>
-            <Border Grid.Column="1" CornerRadius="16" Padding="12,6" Background="#2523C8FF" VerticalAlignment="Center">
-                <TextBlock x:Name="LiveStatusText" Text="● INITIALISATION" Foreground="#FF49D8FF" FontWeight="SemiBold"/>
-            </Border>
-        </Grid>
+        </NavigationView.PaneFooter>
 
-        <TabView x:Name="MainTabView" Grid.Row="1" IsAddTabButtonVisible="False">
-            <TabViewItem Header="Vue d’ensemble">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid Padding="0,12,6,18" ColumnSpacing="16">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="235"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid Padding="22,18,24,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-                        <StackPanel Spacing="12">
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="ACCÈS RAPIDE" FontWeight="SemiBold" Opacity="0.68"/>
-                                    <Button Content="Jeux &amp; Booster" Tag="1" Click="QuickNavButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
-                                    <Button Content="Matériel détecté" Tag="2" Click="QuickNavButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
-                                    <Button Content="Nettoyage profond" Tag="3" Click="QuickNavButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
-                                    <Button Content="Santé système" Tag="4" Click="QuickNavButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="PROJET" FontWeight="SemiBold" Opacity="0.68"/>
-                                    <Button Content="Documentation" Click="OpenDocumentationButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
-                                    <Button Content="Signaler un problème" Click="OpenIssuesButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
-                                    <Button Content="Soutenir Synapse" Click="OpenSupportButton_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="Conseil" FontWeight="SemiBold"/>
-                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="Active uniquement les options dont tu as besoin. Synapse restaure les actions du Game Booster quand le jeu se ferme."/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
+            <InfoBar x:Name="OverviewInfo" IsOpen="False" IsClosable="True" Margin="0,0,0,12"/>
 
-                        <StackPanel Grid.Column="1" Spacing="14">
-                            <ItemsControl>
-                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                <ItemsControl.Items>
-                                    <Border Style="{StaticResource MetricCardStyle}"><StackPanel Spacing="8"><TextBlock Text="PROCESSEUR" Opacity="0.65"/><TextBlock x:Name="CpuValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="CpuBar" Maximum="100"/><TextBlock x:Name="CpuTemperatureText" Text="Température non publiée" Opacity="0.55" FontSize="12"/></StackPanel></Border>
-                                    <Border Style="{StaticResource MetricCardStyle}"><StackPanel Spacing="8"><TextBlock Text="MÉMOIRE" Opacity="0.65"/><TextBlock x:Name="MemoryValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="MemoryBar" Maximum="100"/><TextBlock Text="Mémoire physique utilisée" Opacity="0.55" FontSize="12"/></StackPanel></Border>
-                                    <Border Style="{StaticResource MetricCardStyle}"><StackPanel Spacing="8"><TextBlock Text="CARTE GRAPHIQUE" Opacity="0.65"/><TextBlock x:Name="GpuValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="GpuBar" Maximum="100"/><TextBlock Text="Charge des moteurs 3D" Opacity="0.55" FontSize="12"/></StackPanel></Border>
-                                    <Border Style="{StaticResource MetricCardStyle}"><StackPanel Spacing="8"><TextBlock Text="DISQUE" Opacity="0.65"/><TextBlock x:Name="DiskValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="DiskBar" Maximum="100"/><TextBlock Text="Activité totale des volumes" Opacity="0.55" FontSize="12"/></StackPanel></Border>
-                                </ItemsControl.Items>
-                            </ItemsControl>
+            <Grid Grid.Row="1">
+                <Grid x:Name="GameBoosterView">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14" Padding="0,0,6,18">
+                            <Border Style="{StaticResource HeroCardStyle}" Padding="0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#2B087EA4" Offset="0"/>
+                                        <GradientStop Color="#160E3445" Offset="0.55"/>
+                                        <GradientStop Color="#1021D487" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Grid Padding="24" ColumnSpacing="18">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="GAME BOOSTER" Style="{StaticResource EyebrowStyle}"/>
+                                        <TextBlock Text="Plus de ressources pour ton jeu." Style="{StaticResource PageTitleStyle}"/>
+                                        <TextBlock Text="Synapse détecte le lancement, applique uniquement ton profil et restaure Windows à la fermeture." Style="{StaticResource MutedTextStyle}" MaxWidth="760"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="1" CornerRadius="18" Padding="14,8" Background="{StaticResource SoftGreenBrush}" BorderBrush="#5021D487" BorderThickness="1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon Glyph="&#xE73E;" Foreground="{StaticResource SynapseGreenBrush}" FontSize="16"/>
+                                            <TextBlock Text="Moteur prêt" Foreground="{StaticResource SynapseGreenBrush}" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
 
                             <Grid ColumnSpacing="14">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <Border Style="{StaticResource CardStyle}">
-                                    <StackPanel Spacing="13">
-                                        <TextBlock Text="Mode Performance" Style="{StaticResource SectionTitleStyle}"/>
-                                        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational" Title="À quoi ça sert ?" Message="Ces options réduisent la latence de certaines tâches Windows. Elles n’augmentent pas magiquement les FPS et restent indépendantes du Game Booster."/>
-                                        <ToggleSwitch x:Name="LowLatencyToggle" Header="Timer haute précision (0,5 ms)" OffContent="Désactivé" OnContent="Actif" Toggled="LowLatencyToggle_Toggled"/>
-                                        <TextBlock Style="{StaticResource MutedTextStyle}" Text="Utile pour certains jeux et logiciels audio. Peut légèrement augmenter la consommation tant que Synapse le demande."/>
-                                        <ToggleSwitch x:Name="TelemetryToggle" Header="Bouclier de télémétrie Windows" OffContent="Désactivé" OnContent="Actif" Toggled="TelemetryToggle_Toggled"/>
-                                        <TextBlock Style="{StaticResource MutedTextStyle}" Text="Applique uniquement des stratégies documentées et crée un point de restauration avant modification."/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="1" Style="{StaticResource CardStyle}">
-                                    <StackPanel Spacing="12">
-                                        <Grid><TextBlock Text="Refroidissement &amp; RGB" Style="{StaticResource SectionTitleStyle}"/><Button Content="Redétecter" HorizontalAlignment="Right" Click="RefreshDevicesButton_Click"/></Grid>
-                                        <TextBlock Style="{StaticResource MutedTextStyle}" Text="Synapse recherche automatiquement les ventilateurs, pompes AIO/watercooling, hubs ARGB et contrôleurs USB/HID. Un périphérique peut être détecté sans être pilotable si son constructeur n’expose pas d’API sûre."/>
-                                        <ListView x:Name="DevicePicker" Height="170" SelectionChanged="DevicePicker_SelectionChanged">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="310"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+                                <Border Style="{StaticResource CardStyle}" Padding="0">
+                                    <Grid>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Grid Padding="18,16">
+                                            <StackPanel>
+                                                <TextBlock Text="TES JEUX" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/>
+                                                <TextBlock Text="Bibliothèque détectée" Style="{StaticResource SectionTitleStyle}"/>
+                                            </StackPanel>
+                                            <Button Content="Analyser" HorizontalAlignment="Right" VerticalAlignment="Center" Click="ScanGamesButton_Click"/>
+                                        </Grid>
+                                        <ListView x:Name="GamesList" Grid.Row="1" MinHeight="430" SelectionMode="Single" SelectionChanged="GamesList_SelectionChanged">
                                             <ListView.ItemTemplate>
-                                                <DataTemplate x:DataType="models:DeviceControlCapability">
-                                                    <Grid Padding="8" ColumnSpacing="10">
-                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                        <StackPanel><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Manufacturer}" Opacity="0.6" FontSize="12"/></StackPanel>
-                                                        <StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock Text="{x:Bind Kind}"/><TextBlock Text="{x:Bind Connection}" Opacity="0.6" FontSize="12"/></StackPanel>
+                                                <DataTemplate x:DataType="models:DetectedGame">
+                                                    <Grid Padding="12" ColumnSpacing="12">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <Border Width="42" Height="42" CornerRadius="11" Background="{StaticResource SoftCyanBrush}">
+                                                            <FontIcon Glyph="&#xE7FC;" Foreground="{StaticResource SynapseCyanBrush}" FontSize="20"/>
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                            <TextBlock Text="{x:Bind Launcher}" Opacity="0.58" FontSize="12"/>
+                                                            <TextBlock Text="{x:Bind OptimizationSummary}" Opacity="0.5" FontSize="11" TextWrapping="Wrap" MaxLines="2"/>
+                                                        </StackPanel>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ListView.ItemTemplate>
                                         </ListView>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <Slider x:Name="FanSlider" Header="Vitesse fixe" Minimum="0" Maximum="100" Value="50" Width="210" IsEnabled="False"/>
-                                            <Button x:Name="ApplyFanButton" Content="Appliquer" VerticalAlignment="Bottom" Click="ApplyFanButton_Click" IsEnabled="False"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
-                                            <ColorPicker x:Name="RgbPicker" IsColorSpectrumVisible="False" IsColorSliderVisible="False" IsAlphaEnabled="False" IsEnabled="False"/>
-                                            <Button x:Name="ApplyRgbButton" Content="Appliquer la couleur" VerticalAlignment="Center" Click="ApplyRgbButton_Click" IsEnabled="False"/>
-                                        </StackPanel>
-                                        <TextBlock x:Name="DeviceStatusText" Text="Recherche automatique en cours…" TextWrapping="Wrap" Opacity="0.7"/>
-                                    </StackPanel>
+                                        <TextBlock x:Name="GameStatusText" Grid.Row="2" Margin="18" Text="Analyse automatique de Steam, Epic et des applications enregistrées." TextWrapping="Wrap" Opacity="0.62"/>
+                                    </Grid>
                                 </Border>
+
+                                <StackPanel Grid.Column="1" Spacing="14">
+                                    <Border Style="{StaticResource CardStyle}">
+                                        <Grid ColumnSpacing="14">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <Border Width="54" Height="54" CornerRadius="14" Background="{StaticResource SoftCyanBrush}">
+                                                <FontIcon Glyph="&#xE7FC;" Foreground="{StaticResource SynapseCyanBrush}" FontSize="25"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                                <TextBlock x:Name="SelectedGameNameText" Text="Sélectionne un jeu" FontSize="24" FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="SelectedGamePathText" Text="Le profil s’active automatiquement au lancement du processus détecté." Style="{StaticResource MutedTextStyle}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Content="Enregistrer le profil" Style="{StaticResource AccentButtonStyle}" Click="CreateGameProfileButton_Click" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Style="{StaticResource CardStyle}">
+                                        <StackPanel Spacing="12">
+                                            <Grid>
+                                                <StackPanel>
+                                                    <TextBlock Text="MODE JEU AUTOMATIQUE" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/>
+                                                    <TextBlock Text="Ce qui se passe quand tu joues" Style="{StaticResource SectionTitleStyle}"/>
+                                                </StackPanel>
+                                                <TextBlock Text="Actions réversibles" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{StaticResource SynapseGreenBrush}"/>
+                                            </Grid>
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <Border Style="{StaticResource FlowCardStyle}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <FontIcon Glyph="&#xE768;" FontSize="20" Foreground="{StaticResource SynapseCyanBrush}"/>
+                                                        <StackPanel><TextBlock Text="Jeu lancé" FontWeight="SemiBold"/><TextBlock Text="Détection automatique" FontSize="12" Opacity="0.55"/></StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                                <FontIcon Grid.Column="1" Glyph="&#xE72A;" Margin="4" VerticalAlignment="Center" Opacity="0.45"/>
+                                                <Border Grid.Column="2" Style="{StaticResource FlowCardStyle}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <FontIcon Glyph="&#xE945;" FontSize="20" Foreground="{StaticResource SynapseGreenBrush}"/>
+                                                        <StackPanel><TextBlock Text="Profil appliqué" FontWeight="SemiBold"/><TextBlock Text="CPU, énergie et processus" FontSize="12" Opacity="0.55"/></StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                                <FontIcon Grid.Column="3" Glyph="&#xE72A;" Margin="4" VerticalAlignment="Center" Opacity="0.45"/>
+                                                <Border Grid.Column="4" Style="{StaticResource FlowCardStyle}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                                        <FontIcon Glyph="&#xE8FB;" FontSize="20" Foreground="{StaticResource SynapseCyanBrush}"/>
+                                                        <StackPanel><TextBlock Text="Jeu fermé" FontWeight="SemiBold"/><TextBlock Text="Windows restauré" FontSize="12" Opacity="0.55"/></StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                            <Grid ColumnSpacing="10" RowSpacing="10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                                <Border Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameHighPriorityToggle" IsOn="True" Header="Priorité CPU élevée" OffContent="Désactivée" OnContent="Active"/></Border>
+                                                <Border Grid.Column="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GamePowerPlanToggle" Header="Plan hautes performances" OffContent="Désactivé" OnContent="Actif"/></Border>
+                                                <Border Grid.Row="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameTimerToggle" IsOn="True" Header="Timer basse latence" OffContent="Désactivé" OnContent="Actif"/></Border>
+                                                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameKeepAwakeToggle" IsOn="True" Header="Empêcher la mise en veille" OffContent="Non" OnContent="Oui"/></Border>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Grid ColumnSpacing="14">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Border Style="{StaticResource CardStyle}">
+                                            <StackPanel Spacing="12">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource SoftGreenBrush}"><FontIcon Glyph="&#xE713;" Foreground="{StaticResource SynapseGreenBrush}"/></Border>
+                                                    <StackPanel><TextBlock Text="Gestion des processus" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="Applications mises en pause pendant le jeu" FontSize="12" Opacity="0.55"/></StackPanel>
+                                                </StackPanel>
+                                                <StackPanel x:Name="BoosterRulesPanel" Spacing="6"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="1" Style="{StaticResource CardStyle}">
+                                            <StackPanel Spacing="12">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE945;" Foreground="{StaticResource SynapseCyanBrush}"/></Border>
+                                                    <StackPanel><TextBlock Text="Optimisations système" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="Réglages avancés indépendants du profil" FontSize="12" Opacity="0.55"/></StackPanel>
+                                                </StackPanel>
+                                                <ToggleSwitch x:Name="LowLatencyToggle" Header="Précision du timer à 0,5 ms" OffContent="Désactivée" OnContent="Active" Toggled="LowLatencyToggle_Toggled"/>
+                                                <ToggleSwitch x:Name="TelemetryToggle" Header="Bouclier anti-télémétrie" OffContent="Désactivé" OnContent="Actif" Toggled="TelemetryToggle_Toggled"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <Border Style="{StaticResource CardStyle}">
+                                        <StackPanel Spacing="10">
+                                            <Grid>
+                                                <StackPanel><TextBlock Text="OPTIMISATIONS DU JEU" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Réglages graphiques reconnus" Style="{StaticResource SectionTitleStyle}"/></StackPanel>
+                                                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Spacing="8">
+                                                    <Button Content="Relire" Click="RefreshGameTuningsButton_Click"/>
+                                                    <Button Content="Restaurer" Click="RestoreGameTuningsButton_Click"/>
+                                                    <Button Content="Appliquer" Style="{StaticResource AccentButtonStyle}" Click="ApplyGameTuningsButton_Click"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            <InfoBar x:Name="GameTuningInfo" IsOpen="True" IsClosable="False" Severity="Informational" Title="Détection prudente" Message="Sélectionne un jeu. Synapse proposera uniquement les clés déjà présentes dans un fichier de configuration reconnu."/>
+                                            <StackPanel x:Name="GameTuningsPanel" Spacing="8"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
                             </Grid>
-                            <InfoBar x:Name="OverviewInfo" IsOpen="False" IsClosable="True"/>
                         </StackPanel>
-                    </Grid>
-                </ScrollViewer>
-            </TabViewItem>
+                    </ScrollViewer>
+                </Grid>
 
-            <TabViewItem Header="Jeux &amp; Booster">
-                <Grid Padding="0,12,6,18" ColumnSpacing="16">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="310"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <Border Style="{StaticResource CardStyle}" Padding="0">
-                        <Grid>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                            <Grid Padding="16"><TextBlock Text="Tes jeux" Style="{StaticResource SectionTitleStyle}"/><Button Content="Analyser" HorizontalAlignment="Right" Click="ScanGamesButton_Click"/></Grid>
-                            <ListView x:Name="GamesList" Grid.Row="1" SelectionMode="Single" SelectionChanged="GamesList_SelectionChanged">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="models:DetectedGame">
-                                        <StackPanel Padding="12" Spacing="4"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Launcher}" Opacity="0.6"/><TextBlock Text="{x:Bind OptimizationSummary}" Opacity="0.55" FontSize="12" TextWrapping="Wrap"/></StackPanel>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                            <TextBlock x:Name="GameStatusText" Grid.Row="2" Margin="16" Text="Lance une analyse pour détecter les bibliothèques installées." TextWrapping="Wrap" Opacity="0.7"/>
-                        </Grid>
-                    </Border>
-
-                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Spacing="14">
-                            <Border Style="{StaticResource CardStyle}">
-                                <Grid ColumnSpacing="14">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <StackPanel><TextBlock x:Name="SelectedGameNameText" Text="Sélectionne un jeu" FontSize="26" FontWeight="SemiBold"/><TextBlock x:Name="SelectedGamePathText" Text="Le profil s’active automatiquement au lancement du processus détecté." Opacity="0.62" TextWrapping="Wrap"/></StackPanel>
-                                    <Button Grid.Column="1" Content="Enregistrer et activer" Click="CreateGameProfileButton_Click" VerticalAlignment="Center"/>
+                <Grid x:Name="HardwareView" Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14" Padding="0,0,6,18">
+                            <Border Style="{StaticResource HeroCardStyle}" Padding="0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#291B6B83" Offset="0"/>
+                                        <GradientStop Color="#151A2632" Offset="0.55"/>
+                                        <GradientStop Color="#1823C8FF" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Grid Padding="24">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="MATÉRIEL" Style="{StaticResource EyebrowStyle}"/>
+                                        <TextBlock Text="Ton PC, clairement." Style="{StaticResource PageTitleStyle}"/>
+                                        <TextBlock Text="Charge en temps réel, composants, pilotes, technologies Windows, refroidissement et RGB dans une seule vue." Style="{StaticResource MutedTextStyle}" MaxWidth="760"/>
+                                    </StackPanel>
+                                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
+                                        <Border CornerRadius="16" Padding="12,6" Background="{StaticResource SoftCyanBrush}">
+                                            <TextBlock x:Name="LiveStatusText" Text="● INITIALISATION" Foreground="{StaticResource SynapseCyanBrush}" FontWeight="SemiBold"/>
+                                        </Border>
+                                        <Button Content="Actualiser le matériel" HorizontalAlignment="Stretch" Click="RefreshHardwareButton_Click"/>
+                                    </StackPanel>
                                 </Grid>
                             </Border>
 
                             <Border Style="{StaticResource CardStyle}">
-                                <StackPanel Spacing="12">
-                                    <Grid><TextBlock Text="Mode Jeu" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="Actions réversibles" HorizontalAlignment="Right" Opacity="0.6"/></Grid>
-                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="Ces actions commencent uniquement quand Synapse détecte l’exécutable du jeu. La priorité, le plan d’alimentation, le timer et les processus suspendus sont restaurés à sa fermeture."/>
-                                    <Grid ColumnSpacing="10" RowSpacing="10">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                        <Border Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameHighPriorityToggle" IsOn="True" Header="Priorité CPU élevée" OffContent="Non" OnContent="Oui"/></Border>
-                                        <Border Grid.Column="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GamePowerPlanToggle" Header="Plan hautes performances" OffContent="Non" OnContent="Oui"/></Border>
-                                        <Border Grid.Row="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameTimerToggle" IsOn="True" Header="Timer basse latence" OffContent="Non" OnContent="Oui"/></Border>
-                                        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameKeepAwakeToggle" IsOn="True" Header="Empêcher la mise en veille" OffContent="Non" OnContent="Oui"/></Border>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel Spacing="12">
-                                    <TextBlock Text="Gestion intelligente des processus" Style="{StaticResource SectionTitleStyle}"/>
-                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="Seuls les processus cochés sont suspendus. Les processus critiques Windows sont toujours protégés, et tout est repris automatiquement lorsque le jeu se ferme."/>
-                                    <StackPanel x:Name="BoosterRulesPanel" Spacing="8"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel Spacing="10">
+                                <StackPanel Spacing="14">
                                     <Grid>
-                                        <TextBlock Text="Optimisations propres au jeu" Style="{StaticResource SectionTitleStyle}"/>
-                                        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
-                                            <Button Content="Relire" Click="RefreshGameTuningsButton_Click"/>
-                                            <Button Content="Restaurer" Click="RestoreGameTuningsButton_Click"/>
-                                            <Button Content="Appliquer" Click="ApplyGameTuningsButton_Click"/>
-                                        </StackPanel>
+                                        <StackPanel><TextBlock Text="SYSTÈME" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock x:Name="OperatingSystemText" Text="Windows" Style="{StaticResource SectionTitleStyle}"/><TextBlock x:Name="OperatingSystemVersionText" Text="Version en cours de lecture" FontSize="12" Opacity="0.55"/></StackPanel>
+                                        <Border HorizontalAlignment="Right" VerticalAlignment="Center" Width="42" Height="42" CornerRadius="12" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE770;" Foreground="{StaticResource SynapseCyanBrush}" FontSize="21"/></Border>
                                     </Grid>
-                                    <InfoBar x:Name="GameTuningInfo" IsOpen="True" IsClosable="False" Severity="Informational" Title="Détection prudente" Message="Sélectionne un jeu. Synapse proposera uniquement les clés déjà présentes dans un fichier de configuration reconnu."/>
-                                    <StackPanel x:Name="GameTuningsPanel" Spacing="8"/>
+                                    <Grid ColumnSpacing="10" RowSpacing="10">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Border Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="OsBuildText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Build" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                        <Border Grid.Column="1" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="OsArchitectureText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Architecture" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                        <Border Grid.Column="2" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="ComputerNameText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Nom du PC" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                        <Border Grid.Column="3" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="UserNameText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Utilisateur" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                        <Border Grid.Row="1" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="InstalledDateText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Installation" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="SystemUptimeText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Temps de fonctionnement" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                        <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="BootModeText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Mode de démarrage" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                        <Border Grid.Row="1" Grid.Column="3" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="TpmVersionText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Version TPM" FontSize="11" Opacity="0.5"/></StackPanel></Border>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource MetricCardStyle}">
+                                    <StackPanel Spacing="7"><FontIcon Glyph="&#xE950;" Foreground="{StaticResource SynapseCyanBrush}" HorizontalAlignment="Left"/><TextBlock Text="PROCESSEUR" FontSize="11" Opacity="0.55"/><TextBlock x:Name="CpuValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="CpuBar" Maximum="100" Foreground="{StaticResource SynapseCyanBrush}"/><TextBlock x:Name="CpuTemperatureText" Text="Température non publiée" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Style="{StaticResource MetricCardStyle}">
+                                    <StackPanel Spacing="7"><FontIcon Glyph="&#xE964;" Foreground="{StaticResource SynapseGreenBrush}" HorizontalAlignment="Left"/><TextBlock Text="MÉMOIRE" FontSize="11" Opacity="0.55"/><TextBlock x:Name="MemoryValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="MemoryBar" Maximum="100" Foreground="{StaticResource SynapseGreenBrush}"/><TextBlock Text="Mémoire physique utilisée" FontSize="11" Opacity="0.5"/></StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Style="{StaticResource MetricCardStyle}">
+                                    <StackPanel Spacing="7"><FontIcon Glyph="&#xE7F4;" Foreground="{StaticResource SynapseAmberBrush}" HorizontalAlignment="Left"/><TextBlock Text="CARTE GRAPHIQUE" FontSize="11" Opacity="0.55"/><TextBlock x:Name="GpuValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="GpuBar" Maximum="100" Foreground="{StaticResource SynapseAmberBrush}"/><TextBlock Text="Charge des moteurs 3D" FontSize="11" Opacity="0.5"/></StackPanel>
+                                </Border>
+                                <Border Grid.Column="3" Style="{StaticResource MetricCardStyle}">
+                                    <StackPanel Spacing="7"><FontIcon Glyph="&#xEDA2;" Foreground="{StaticResource SynapseRedBrush}" HorizontalAlignment="Left"/><TextBlock Text="DISQUE" FontSize="11" Opacity="0.55"/><TextBlock x:Name="DiskValue" Text="—" FontSize="30" FontWeight="SemiBold"/><ProgressBar x:Name="DiskBar" Maximum="100" Foreground="{StaticResource SynapseRedBrush}"/><TextBlock Text="Activité totale des volumes" FontSize="11" Opacity="0.5"/></StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="0.85*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardStyle}" Padding="0">
+                                    <Grid>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                        <Grid Padding="20,17"><StackPanel><TextBlock Text="INVENTAIRE" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Composants et pilotes" Style="{StaticResource SectionTitleStyle}"/></StackPanel><TextBlock Text="Données publiées par Windows" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.5"/></Grid>
+                                        <ListView x:Name="HardwareList" Grid.Row="1" MinHeight="360">
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate x:DataType="models:HardwareComponent">
+                                                    <Grid Padding="12" ColumnSpacing="12">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <Border Width="42" Height="42" CornerRadius="11" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE950;" Foreground="{StaticResource SynapseCyanBrush}"/></Border>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Category}" FontSize="12" Opacity="0.55"/></StackPanel>
+                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right"><TextBlock Text="{x:Bind Manufacturer}" TextAlignment="Right"/><TextBlock Text="{x:Bind DriverVersion}" FontSize="12" Opacity="0.55" TextAlignment="Right"/></StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+                                        </ListView>
+                                    </Grid>
+                                </Border>
+                                <Border Grid.Column="1" Style="{StaticResource CardStyle}" Padding="0">
+                                    <Grid>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                        <StackPanel Padding="20,17"><TextBlock Text="TECHNOLOGIES" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Fonctions activées" Style="{StaticResource SectionTitleStyle}"/></StackPanel>
+                                        <ListView x:Name="TechnologiesList" Grid.Row="1" MinHeight="360">
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate x:DataType="models:TechnologyStatus">
+                                                    <Grid Padding="12" ColumnSpacing="10">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                        <StackPanel><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Detail}" FontSize="12" Opacity="0.55" TextWrapping="Wrap"/></StackPanel>
+                                                        <Border Grid.Column="1" CornerRadius="12" Padding="9,4" Background="{StaticResource SoftGreenBrush}" VerticalAlignment="Center"><TextBlock Text="{x:Bind State}" Foreground="{StaticResource SynapseGreenBrush}" FontSize="12" FontWeight="SemiBold"/></Border>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+                                        </ListView>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel Spacing="14">
+                                    <Grid>
+                                        <StackPanel><TextBlock Text="RÉSEAU" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Interfaces et connectivité" Style="{StaticResource SectionTitleStyle}"/></StackPanel>
+                                        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="IP PUBLIQUE" FontSize="10" CharacterSpacing="90" Opacity="0.5" HorizontalAlignment="Right"/><TextBlock x:Name="PublicIpText" Text="Détection…" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Right"/></StackPanel>
+                                    </Grid>
+                                    <ListView x:Name="NetworkAdaptersList" MaxHeight="280" SelectionMode="None">
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:NetworkAdapterInfo">
+                                                <Border Style="{StaticResource ActionRowStyle}" Margin="0,0,0,8">
+                                                    <Grid ColumnSpacing="14">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="1.4*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <Border Width="44" Height="44" CornerRadius="12" Background="{StaticResource SoftGreenBrush}"><FontIcon Glyph="&#xE701;" Foreground="{StaticResource SynapseGreenBrush}" FontSize="20"/></Border>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Description}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel>
+                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="{x:Bind LocalIpAddress}" FontWeight="SemiBold"/><TextBlock Text="Adresse IP locale" FontSize="11" Opacity="0.5"/></StackPanel>
+                                                        <StackPanel Grid.Column="3" VerticalAlignment="Center"><TextBlock Text="{x:Bind MacAddress}" FontWeight="SemiBold"/><TextBlock Text="Adresse MAC" FontSize="11" Opacity="0.5"/></StackPanel>
+                                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right"><TextBlock Text="{x:Bind LinkSpeed}" FontWeight="SemiBold" HorizontalAlignment="Right"/><TextBlock Text="Vitesse de liaison" FontSize="11" Opacity="0.5" HorizontalAlignment="Right"/></StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="NetworkThroughputText" Text="—" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource SynapseGreenBrush}"/><TextBlock Text="Activité réseau en temps réel" FontSize="11" Opacity="0.5"/></StackPanel></Border><Border Grid.Column="1" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="NetworkGatewayText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Passerelle" FontSize="11" Opacity="0.5"/></StackPanel></Border><Border Grid.Column="2" Style="{StaticResource ActionRowStyle}"><StackPanel><TextBlock x:Name="NetworkDnsText" Text="—" FontWeight="SemiBold"/><TextBlock Text="Serveurs DNS" FontSize="11" Opacity="0.5"/></StackPanel></Border></Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel Spacing="14">
+                                    <Grid><StackPanel><TextBlock Text="CONTRÔLE MATÉRIEL" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Refroidissement et RGB" Style="{StaticResource SectionTitleStyle}"/></StackPanel><Button Content="Redétecter les périphériques" HorizontalAlignment="Right" VerticalAlignment="Center" Click="RefreshDevicesButton_Click"/></Grid>
+                                    <TextBlock Text="Synapse recherche les ventilateurs, pompes AIO, hubs ARGB et contrôleurs USB/HID. Le contrôle n’est proposé que lorsqu’une API sûre est disponible." Style="{StaticResource MutedTextStyle}"/>
+                                    <Grid ColumnSpacing="14">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <ListView x:Name="DevicePicker" Height="220" SelectionChanged="DevicePicker_SelectionChanged">
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate x:DataType="models:DeviceControlCapability">
+                                                    <Grid Padding="10" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Manufacturer}" FontSize="12" Opacity="0.55"/></StackPanel><StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock Text="{x:Bind Kind}"/><TextBlock Text="{x:Bind Connection}" FontSize="12" Opacity="0.55"/></StackPanel></Grid>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+                                        </ListView>
+                                        <Border Grid.Column="1" Style="{StaticResource ActionRowStyle}"><StackPanel Spacing="10"><FontIcon Glyph="&#xE9CA;" Foreground="{StaticResource SynapseCyanBrush}" HorizontalAlignment="Left" FontSize="22"/><TextBlock Text="Vitesse fixe" FontWeight="SemiBold"/><Slider x:Name="FanSlider" Minimum="0" Maximum="100" Value="50" IsEnabled="False"/><Button x:Name="ApplyFanButton" Content="Appliquer la vitesse" Click="ApplyFanButton_Click" IsEnabled="False" HorizontalAlignment="Stretch"/></StackPanel></Border>
+                                        <Border Grid.Column="2" Style="{StaticResource ActionRowStyle}"><StackPanel Spacing="10"><FontIcon Glyph="&#xE790;" Foreground="{StaticResource SynapseGreenBrush}" HorizontalAlignment="Left" FontSize="22"/><TextBlock Text="Couleur RGB" FontWeight="SemiBold"/><ColorPicker x:Name="RgbPicker" IsColorSpectrumVisible="False" IsColorSliderVisible="False" IsAlphaEnabled="False" IsEnabled="False"/><Button x:Name="ApplyRgbButton" Content="Appliquer la couleur" Click="ApplyRgbButton_Click" IsEnabled="False" HorizontalAlignment="Stretch"/></StackPanel></Border>
+                                    </Grid>
+                                    <TextBlock x:Name="DeviceStatusText" Text="Recherche automatique en cours…" Opacity="0.62" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
-            </TabViewItem>
 
-            <TabViewItem Header="Matériel">
-                <Grid Padding="0,12,6,18" RowSpacing="12">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                    <Grid><StackPanel><TextBlock Text="Informations matérielles" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="Composants, pilotes, firmware et technologies de sécurité réellement publiés par Windows." Opacity="0.65"/></StackPanel><Button Content="Actualiser" HorizontalAlignment="Right" Click="RefreshHardwareButton_Click"/></Grid>
-                    <ListView x:Name="TechnologiesList" Grid.Row="1" MaxHeight="210">
-                        <ListView.ItemTemplate><DataTemplate x:DataType="models:TechnologyStatus"><Grid Padding="8" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{x:Bind State}"/><TextBlock Grid.Column="2" Text="{x:Bind Detail}" TextWrapping="Wrap"/></Grid></DataTemplate></ListView.ItemTemplate>
-                    </ListView>
-                    <ListView x:Name="HardwareList" Grid.Row="2">
-                        <ListView.ItemTemplate><DataTemplate x:DataType="models:HardwareComponent"><Grid Padding="10" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="{x:Bind Category}" Opacity="0.65"/><TextBlock Grid.Column="1" Text="{x:Bind Name}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Grid.Column="2" Text="{x:Bind Manufacturer}"/><TextBlock Grid.Column="3" Text="{x:Bind DriverVersion}"/></Grid></DataTemplate></ListView.ItemTemplate>
-                    </ListView>
+                <Grid x:Name="DeepCleanupView" Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14" Padding="0,0,6,18">
+                            <Border Style="{StaticResource HeroCardStyle}" Padding="0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#2B8C5612" Offset="0"/><GradientStop Color="#161F252B" Offset="0.55"/><GradientStop Color="#16FFB44A" Offset="1"/></LinearGradientBrush>
+                                </Border.Background>
+                                <Grid Padding="24" ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="6"><TextBlock Text="NETTOYAGE PROFOND" Style="{StaticResource EyebrowStyle}" Foreground="{StaticResource SynapseAmberBrush}"/><TextBlock Text="Récupère de l’espace, sans deviner." Style="{StaticResource PageTitleStyle}"/><TextBlock Text="Analyse avant suppression, estimation claire et point de restauration pour chaque action sensible." Style="{StaticResource MutedTextStyle}" MaxWidth="760"/></StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="Analyser" Click="AnalyzeCleanupButton_Click"/><Button Content="Nettoyer la sélection" Style="{StaticResource AccentButtonStyle}" Click="CleanButton_Click"/></StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource CardStyle}" Background="{StaticResource SoftAmberBrush}" BorderBrush="#45FFB44A">
+                                <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="14" Background="#25FFB44A"><FontIcon Glyph="&#xEDA2;" Foreground="{StaticResource SynapseAmberBrush}" FontSize="24"/></Border><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="ESPACE RÉCUPÉRABLE" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock x:Name="CleanupStatusText" Text="Prêt pour l’analyse" FontSize="22" FontWeight="SemiBold"/></StackPanel><StackPanel Grid.Column="2" VerticalAlignment="Center"><TextBlock Text="Documents personnels protégés" Foreground="{StaticResource SynapseGreenBrush}"/><TextBlock Text="Cookies et mots de passe non ciblés" FontSize="12" Opacity="0.55"/></StackPanel></Grid>
+                            </Border>
+
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="0.8*"/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource CardStyle}">
+                                    <StackPanel Spacing="12"><StackPanel><TextBlock Text="ZONES À ANALYSER" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Choisis ce que Synapse peut nettoyer" Style="{StaticResource SectionTitleStyle}"/></StackPanel><StackPanel x:Name="CleanupOptionsPanel"/></StackPanel>
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="14">
+                                    <Border Style="{StaticResource CardStyle}">
+                                        <StackPanel Spacing="12"><TextBlock Text="NETTOYAGE SÉCURISÉ" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Toujours contrôlé, jamais aveugle" Style="{StaticResource SectionTitleStyle}"/>
+                                            <Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Border Style="{StaticResource FlowCardStyle}"><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource SoftCyanBrush}"><TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource SynapseCyanBrush}" FontWeight="Bold"/></Border><StackPanel><TextBlock Text="Analyse locale" FontWeight="SemiBold"/><TextBlock Text="Aucun fichier supprimé" FontSize="12" Opacity="0.55"/></StackPanel></StackPanel></Border><Border Grid.Row="1" Style="{StaticResource FlowCardStyle}"><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource SoftGreenBrush}"><TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource SynapseGreenBrush}" FontWeight="Bold"/></Border><StackPanel><TextBlock Text="Point de restauration" FontWeight="SemiBold"/><TextBlock Text="Créé avant modification" FontSize="12" Opacity="0.55"/></StackPanel></StackPanel></Border><Border Grid.Row="2" Style="{StaticResource FlowCardStyle}"><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource SoftAmberBrush}"><TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource SynapseAmberBrush}" FontWeight="Bold"/></Border><StackPanel><TextBlock Text="Rapport final" FontWeight="SemiBold"/><TextBlock Text="Libéré, ignoré et protégé" FontSize="12" Opacity="0.55"/></StackPanel></StackPanel></Border></Grid>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource CardStyle}">
+                                        <StackPanel Spacing="12"><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="38" Height="38" CornerRadius="10" Background="{StaticResource SoftRedBrush}"><FontIcon Glyph="&#xE74D;" Foreground="{StaticResource SynapseRedBrush}"/></Border><StackPanel><TextBlock Text="Désinstallation profonde" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="Programme et résidus validés" FontSize="12" Opacity="0.55"/></StackPanel></StackPanel><ComboBox x:Name="AppsPicker" DisplayMemberPath="Name" PlaceholderText="Choisir une application" HorizontalAlignment="Stretch"/><StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Analyser les résidus" Click="AnalyzeUninstallButton_Click"/><Button Content="Désinstaller proprement" Click="ExecuteUninstallButton_Click"/></StackPanel><TextBlock x:Name="UninstallStatusText" Text="Sélectionne une application pour rechercher ses résidus." TextWrapping="Wrap" Opacity="0.62"/></StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
                 </Grid>
-            </TabViewItem>
 
-            <TabViewItem Header="Nettoyage profond">
-                <ScrollViewer><StackPanel Padding="0,12,6,18" Spacing="12">
-                    <Grid><StackPanel><TextBlock Text="Nettoyage profond" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="Analyse avant suppression, estimation de l’espace et point de restauration." Opacity="0.65"/></StackPanel><StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8"><Button Content="Analyser" Click="AnalyzeCleanupButton_Click"/><Button Content="Nettoyer la sélection" Click="CleanButton_Click"/></StackPanel></Grid>
-                    <InfoBar IsOpen="True" IsClosable="False" Severity="Informational" Message="Les documents personnels, mots de passe et cookies de connexion ne sont pas ciblés."/>
-                    <Border Style="{StaticResource CardStyle}"><StackPanel x:Name="CleanupOptionsPanel" Spacing="6"/></Border>
-                    <TextBlock x:Name="CleanupStatusText" FontWeight="SemiBold"/>
-                    <Border Style="{StaticResource CardStyle}" Margin="0,8,0,0"><StackPanel Spacing="10"><TextBlock Text="Désinstallation profonde" Style="{StaticResource SectionTitleStyle}"/><ComboBox x:Name="AppsPicker" DisplayMemberPath="Name" PlaceholderText="Choisir une application"/><StackPanel Orientation="Horizontal" Spacing="10"><Button Content="Analyser les résidus" Click="AnalyzeUninstallButton_Click"/><Button Content="Désinstaller proprement" Click="ExecuteUninstallButton_Click"/></StackPanel><TextBlock x:Name="UninstallStatusText" TextWrapping="Wrap" Opacity="0.7"/></StackPanel></Border>
-                </StackPanel></ScrollViewer>
-            </TabViewItem>
+                <Grid x:Name="SystemHealthView" Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14" Padding="0,0,6,18">
+                            <Border Style="{StaticResource HeroCardStyle}" Padding="0">
+                                <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#29287B5C" Offset="0"/><GradientStop Color="#161C2A28" Offset="0.55"/><GradientStop Color="#1621D487" Offset="1"/></LinearGradientBrush></Border.Background>
+                                <Grid Padding="24" ColumnSpacing="20"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="6"><TextBlock Text="SANTÉ SYSTÈME" Style="{StaticResource EyebrowStyle}" Foreground="{StaticResource SynapseGreenBrush}"/><TextBlock Text="Un diagnostic lisible de Windows." Style="{StaticResource PageTitleStyle}"/><TextBlock Text="Contrôles du stockage, de la sécurité, des pilotes, du réseau, des températures et de la stabilité." Style="{StaticResource MutedTextStyle}" MaxWidth="720"/></StackPanel><StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0"><TextBlock Text="SCORE GLOBAL" FontSize="11" CharacterSpacing="100" Opacity="0.55"/><TextBlock x:Name="HealthScoreText" Text="—" FontSize="38" FontWeight="SemiBold"/><ProgressBar x:Name="HealthScoreBar" Width="160" Maximum="100" Foreground="{StaticResource SynapseGreenBrush}"/></StackPanel><Button Grid.Column="2" Content="Lancer tous les diagnostics" Style="{StaticResource AccentButtonStyle}" Click="RunDiagnosticsButton_Click" VerticalAlignment="Center"/></Grid>
+                            </Border>
 
-            <TabViewItem Header="Santé système">
-                <Grid Padding="0,12,6,18" ColumnSpacing="16">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="330"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <StackPanel Spacing="12">
-                        <Border Style="{StaticResource CardStyle}">
-                            <StackPanel Spacing="10">
-                                <TextBlock Text="System Health Center" Style="{StaticResource SectionTitleStyle}"/>
-                                <TextBlock Style="{StaticResource MutedTextStyle}" Text="21 contrôles couvrant Windows, le stockage, la sécurité, les pilotes, le réseau, les températures et la stabilité."/>
-                                <Button Content="Lancer tous les diagnostics" Click="RunDiagnosticsButton_Click" HorizontalAlignment="Stretch"/>
-                            </StackPanel>
+                            <Border Style="{StaticResource CardStyle}" Padding="8">
+                                <RadioButtons Orientation="Horizontal" SelectedIndex="0">
+                                    <RadioButton x:Name="SystemHealthModeButton" Content="Santé système" Tag="System" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
+                                    <RadioButton Content="Nettoyage" Tag="Cleanup" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
+                                    <RadioButton Content="Santé réseau" Tag="Network" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
+                                    <RadioButton Content="Santé stockage" Tag="Storage" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
+                                    <RadioButton Content="Correctifs" Tag="Fixes" GroupName="HealthSection" Click="HealthModeButton_Click" Padding="14,8"/>
+                                </RadioButtons>
+                            </Border>
+
+                            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource MetricCardStyle}" Background="{StaticResource SoftGreenBrush}" BorderBrush="#4021D487"><StackPanel Orientation="Horizontal" Spacing="12"><Border Width="42" Height="42" CornerRadius="12" Background="#2521D487"><FontIcon Glyph="&#xE73E;" Foreground="{StaticResource SynapseGreenBrush}"/></Border><StackPanel><TextBlock Text="SAINS" FontSize="11" Opacity="0.55"/><TextBlock x:Name="HealthyCountText" Text="—" FontSize="28" FontWeight="SemiBold"/></StackPanel></StackPanel></Border><Border Grid.Column="1" Style="{StaticResource MetricCardStyle}" Background="{StaticResource SoftAmberBrush}" BorderBrush="#40FFB44A"><StackPanel Orientation="Horizontal" Spacing="12"><Border Width="42" Height="42" CornerRadius="12" Background="#25FFB44A"><FontIcon Glyph="&#xE7BA;" Foreground="{StaticResource SynapseAmberBrush}"/></Border><StackPanel><TextBlock Text="À SURVEILLER" FontSize="11" Opacity="0.55"/><TextBlock x:Name="WarningCountText" Text="—" FontSize="28" FontWeight="SemiBold"/></StackPanel></StackPanel></Border><Border Grid.Column="2" Style="{StaticResource MetricCardStyle}" Background="{StaticResource SoftRedBrush}" BorderBrush="#40FF5D6C"><StackPanel Orientation="Horizontal" Spacing="12"><Border Width="42" Height="42" CornerRadius="12" Background="#25FF5D6C"><FontIcon Glyph="&#xEA39;" Foreground="{StaticResource SynapseRedBrush}"/></Border><StackPanel><TextBlock Text="CRITIQUES" FontSize="11" Opacity="0.55"/><TextBlock x:Name="CriticalCountText" Text="—" FontSize="28" FontWeight="SemiBold"/></StackPanel></StackPanel></Border></Grid>
+
+                            <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Spacing="14"><Border Style="{StaticResource CardStyle}"><StackPanel Spacing="10"><TextBlock Text="FILTRES" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><ComboBox x:Name="HealthCategoryPicker" Header="Catégorie" SelectionChanged="HealthFilter_SelectionChanged" SelectedIndex="0"><x:String>Toutes</x:String><x:String>Système</x:String><x:String>Stockage</x:String><x:String>Sécurité</x:String><x:String>Performances</x:String><x:String>Pilotes</x:String><x:String>Réseau</x:String><x:String>Matériel</x:String><x:String>Stabilité</x:String></ComboBox><ComboBox x:Name="HealthStatePicker" Header="État" SelectionChanged="HealthFilter_SelectionChanged" SelectedIndex="0"><x:String>Tous</x:String><x:String>Critique</x:String><x:String>Avertissement</x:String><x:String>Sain</x:String><x:String>Inconnu</x:String></ComboBox></StackPanel></Border><Border Style="{StaticResource CardStyle}"><StackPanel Spacing="8"><TextBlock Text="RÉSUMÉ" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock x:Name="DiagnosticsSummaryText" Text="Sélectionne les contrôles à lancer" TextWrapping="Wrap"/><Button Content="Effacer les résultats" HorizontalAlignment="Stretch" Click="ClearDiagnosticsButton_Click"/></StackPanel></Border></StackPanel><Border Grid.Column="1" Style="{StaticResource CardStyle}" Padding="0"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><Grid Padding="20,17"><StackPanel><TextBlock Text="CONTRÔLES ET RAPPORT" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock Text="Sélectionne les tests à analyser" Style="{StaticResource SectionTitleStyle}"/></StackPanel><TextBlock Text="21 contrôles ciblés" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.5"/></Grid><ListView x:Name="DiagnosticsList" Grid.Row="1" MinHeight="480" SelectionMode="Multiple" IsMultiSelectCheckBoxEnabled="True"><ListView.ItemTemplate><DataTemplate x:DataType="models:DiagnosticCheckResult"><Border Style="{StaticResource ActionRowStyle}" Margin="10,0,10,8"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="96"/><ColumnDefinition Width="190"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border CornerRadius="12" Padding="8,4" Background="{StaticResource SoftCyanBrush}" VerticalAlignment="Top" HorizontalAlignment="Left"><TextBlock Text="{x:Bind State}" FontWeight="SemiBold" FontSize="12"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Category}" Opacity="0.55" FontSize="12"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{x:Bind Summary}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Recommendation}" Opacity="0.6" FontSize="12" TextWrapping="Wrap"/></StackPanel></Grid></Border></DataTemplate></ListView.ItemTemplate></ListView></Grid></Border></Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <Grid x:Name="TaskManagerView" Visibility="Collapsed">
+                    <StackPanel Spacing="14">
+                        <Border Style="{StaticResource HeroCardStyle}" Padding="0">
+                            <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#292D405E" Offset="0"/><GradientStop Color="#161C222B" Offset="0.55"/><GradientStop Color="#1635C7F4" Offset="1"/></LinearGradientBrush></Border.Background>
+                            <Grid Padding="24" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="6"><TextBlock Text="GESTIONNAIRE DES TÂCHES" Style="{StaticResource EyebrowStyle}"/><TextBlock Text="Tout ce qui tourne sur ton PC." Style="{StaticResource PageTitleStyle}"/><TextBlock Text="Processus en cours, logiciels installés, démarrage automatique et services Windows dans une interface unique." Style="{StaticResource MutedTextStyle}" MaxWidth="760"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="Ouvrir le Gestionnaire Windows" Click="OpenWindowsTaskManagerButton_Click"/><Button Content="Actualiser" Style="{StaticResource AccentButtonStyle}" Click="RefreshTaskManagerButton_Click"/></StackPanel></Grid>
                         </Border>
-                        <Border Style="{StaticResource CardStyle}">
-                            <StackPanel Spacing="10">
-                                <TextBlock Text="Filtres" FontWeight="SemiBold"/>
-                                <ComboBox x:Name="HealthCategoryPicker" Header="Catégorie" SelectionChanged="HealthFilter_SelectionChanged" SelectedIndex="0">
-                                    <x:String>Toutes</x:String><x:String>Système</x:String><x:String>Stockage</x:String><x:String>Sécurité</x:String><x:String>Performances</x:String><x:String>Pilotes</x:String><x:String>Réseau</x:String><x:String>Matériel</x:String><x:String>Stabilité</x:String>
-                                </ComboBox>
-                                <ComboBox x:Name="HealthStatePicker" Header="État" SelectionChanged="HealthFilter_SelectionChanged" SelectedIndex="0">
-                                    <x:String>Tous</x:String><x:String>Critique</x:String><x:String>Avertissement</x:String><x:String>Sain</x:String><x:String>Inconnu</x:String>
-                                </ComboBox>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource CardStyle}">
-                            <StackPanel Spacing="6"><TextBlock Text="Score de santé" Opacity="0.65"/><TextBlock x:Name="HealthScoreText" Text="—" FontSize="38" FontWeight="SemiBold"/><TextBlock x:Name="DiagnosticsSummaryText" Text="Aucun diagnostic lancé" TextWrapping="Wrap"/></StackPanel>
-                        </Border>
+
+                        <TabView x:Name="TaskManagerTabView" IsAddTabButtonVisible="False">
+                            <TabViewItem Header="Processus">
+                                <Grid Padding="0,12,4,4"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid Margin="0,0,0,10"><StackPanel><TextBlock Text="PROCESSUS ACTIFS" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock x:Name="ProcessCountText" Text="Chargement…" Style="{StaticResource SectionTitleStyle}"/></StackPanel></Grid><Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="0"><ListView x:Name="TaskProcessesList" SelectionMode="Single"><ListView.ItemTemplate><DataTemplate x:DataType="models:TaskProcessInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="120"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE9D9;" Foreground="{StaticResource SynapseCyanBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Description}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Id}" VerticalAlignment="Center" Opacity="0.65"/><TextBlock Grid.Column="3" Text="{x:Bind MemoryDisplay}" VerticalAlignment="Center"/><TextBlock Grid.Column="4" Text="{x:Bind Status}" VerticalAlignment="Center"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border><Grid Grid.Row="2" Margin="0,10,0,0"><TextBlock x:Name="TaskManagerStatusText" Text="Sélectionne un processus pour afficher les actions disponibles." VerticalAlignment="Center" Opacity="0.6"/><Button Content="Terminer la tâche" HorizontalAlignment="Right" Click="EndTaskButton_Click"/></Grid></Grid>
+                            </TabViewItem>
+                            <TabViewItem Header="Applications">
+                                <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="TaskApplicationsList" SelectionMode="Single"><ListView.ItemTemplate><DataTemplate x:DataType="models:InstalledApplication"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftAmberBrush}"><FontIcon Glyph="&#xE71D;" Foreground="{StaticResource SynapseAmberBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Publisher}" FontSize="11" Opacity="0.5"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Version}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="Installée" VerticalAlignment="Center" Foreground="{StaticResource SynapseGreenBrush}"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
+                            </TabViewItem>
+                            <TabViewItem Header="Démarrage">
+                                <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="StartupItemsList" SelectionMode="None"><ListView.ItemTemplate><DataTemplate x:DataType="models:StartupItemInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="130"/><ColumnDefinition Width="120"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftGreenBrush}"><FontIcon Glyph="&#xE768;" Foreground="{StaticResource SynapseGreenBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Command}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Source}" VerticalAlignment="Center"/><Border Grid.Column="3" CornerRadius="11" Padding="8,4" Background="{StaticResource SoftAmberBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"><TextBlock Text="{x:Bind Impact}" FontSize="11"/></Border><ToggleSwitch Grid.Column="4" IsOn="{x:Bind IsEnabled}" IsHitTestVisible="False" VerticalAlignment="Center"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
+                            </TabViewItem>
+                            <TabViewItem Header="Services">
+                                <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="WindowsServicesList" SelectionMode="None"><ListView.ItemTemplate><DataTemplate x:DataType="models:WindowsServiceInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="120"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE713;" Foreground="{StaticResource SynapseCyanBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Description}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind ProcessId}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="{x:Bind StartMode}" VerticalAlignment="Center"/><TextBlock Grid.Column="4" Text="{x:Bind State}" VerticalAlignment="Center" Foreground="{StaticResource SynapseGreenBrush}"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
+                            </TabViewItem>
+                        </TabView>
                     </StackPanel>
-                    <Border Grid.Column="1" Style="{StaticResource CardStyle}" Padding="0">
-                        <Grid>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <Grid Padding="18"><TextBlock Text="Résultats et recommandations" Style="{StaticResource SectionTitleStyle}"/><Button Content="Effacer" HorizontalAlignment="Right" Click="ClearDiagnosticsButton_Click"/></Grid>
-                            <ListView x:Name="DiagnosticsList" Grid.Row="1">
-                                <ListView.ItemTemplate><DataTemplate x:DataType="models:DiagnosticCheckResult"><Border Style="{StaticResource ActionRowStyle}" Margin="8,0,8,8"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="{x:Bind State}" FontWeight="SemiBold"/><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Category}" Opacity="0.55" FontSize="12"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{x:Bind Summary}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Recommendation}" Opacity="0.62" TextWrapping="Wrap"/></StackPanel></Grid></Border></DataTemplate></ListView.ItemTemplate>
-                            </ListView>
-                        </Grid>
-                    </Border>
                 </Grid>
-            </TabViewItem>
-        </TabView>
-    </Grid>
+            </Grid>
+        </Grid>
+    </NavigationView>
 </Page>

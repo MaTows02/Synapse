@@ -127,6 +127,7 @@ public static class InfrastructureServicesExtensions
         // Synapse Control Center — live telemetry, hardware, gaming and maintenance.
         services.AddSingleton<ISystemTelemetryService, SystemTelemetryService>();
         services.AddSingleton<IHardwareInventoryService, HardwareInventoryService>();
+        services.AddSingleton<ITaskManagerService, TaskManagerService>();
         services.AddSingleton<IDeviceControlService, DeviceControlService>();
         services.AddSingleton<IGameDiscoveryService, GameDiscoveryService>();
         services.AddSingleton<IGameBoosterService, GameBoosterService>();

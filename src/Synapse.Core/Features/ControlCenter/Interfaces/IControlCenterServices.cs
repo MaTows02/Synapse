@@ -12,6 +12,12 @@ public interface IHardwareInventoryService
     Task<HardwareInventory> CollectAsync(CancellationToken cancellationToken = default);
 }
 
+public interface ITaskManagerService
+{
+    Task<TaskManagerSnapshot> CollectAsync(CancellationToken cancellationToken = default);
+    Task<OperationResult> TerminateProcessAsync(int processId, CancellationToken cancellationToken = default);
+}
+
 public interface IDeviceControlService
 {
     Task<IReadOnlyList<DeviceControlCapability>> DiscoverAsync(CancellationToken cancellationToken = default);

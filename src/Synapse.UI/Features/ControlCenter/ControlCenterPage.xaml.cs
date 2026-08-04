@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using System.Diagnostics;
 using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
 using Windows.System;
@@ -13,6 +14,7 @@ public sealed partial class ControlCenterPage : Page
 {
     private readonly ISystemTelemetryService _telemetry = App.Services.GetRequiredService<ISystemTelemetryService>();
     private readonly IHardwareInventoryService _hardware = App.Services.GetRequiredService<IHardwareInventoryService>();
+    private readonly ITaskManagerService _taskManager = App.Services.GetRequiredService<ITaskManagerService>();
     private readonly IDeviceControlService _devices = App.Services.GetRequiredService<IDeviceControlService>();
     private readonly IGameDiscoveryService _games = App.Services.GetRequiredService<IGameDiscoveryService>();
     private readonly IGameBoosterService _booster = App.Services.GetRequiredService<IGameBoosterService>();
@@ -26,10 +28,12 @@ public sealed partial class ControlCenterPage : Page
     private IReadOnlyList<DiagnosticCheckResult> _lastDiagnosticChecks = Array.Empty<DiagnosticCheckResult>();
     private readonly Dictionary<string, Control> _gameTuningInputs = new(StringComparer.OrdinalIgnoreCase);
     private bool _ignoreToggleEvents;
+    private string _healthSection = "System";
 
     public ControlCenterPage()
     {
         InitializeComponent();
+        LoadDiagnosticCatalog();
         _timer.Tick += TelemetryTimer_Tick;
         Loaded += ControlCenterPage_Loaded;
     }
@@ -41,7 +45,7 @@ public sealed partial class ControlCenterPage : Page
     {
         BuildCleanupOptions();
         BuildBoosterRules();
-        await Task.WhenAll(RefreshDevicesAsync(), RefreshHardwareAsync(), LoadApplicationsAsync(), RefreshGamesAsync());
+        await Task.WhenAll(RefreshDevicesAsync(), RefreshHardwareAsync(), LoadApplicationsAsync(), RefreshGamesAsync(), RefreshTaskManagerAsync());
         await _devices.ApplyPersistedProfilesAsync();
         await _booster.StartMonitoringAsync();
         await RefreshTelemetryAsync();
@@ -62,6 +66,7 @@ public sealed partial class ControlCenterPage : Page
                 ? $"{sample.CpuTemperatureCelsius:0.#} °C · capteur ACPI"
                 : "Température non publiée par le firmware";
             LiveStatusText.Text = $"● TEMPS RÉEL · {sample.NetworkBytesPerSecond / 1024 / 1024:0.0} Mo/s";
+            NetworkThroughputText.Text = $"{sample.NetworkBytesPerSecond / 1024 / 1024:0.00} Mo/s";
         }
         catch { LiveStatusText.Text = "● CAPTEURS INDISPONIBLES"; }
     }
@@ -307,13 +312,53 @@ public sealed partial class ControlCenterPage : Page
         var inventory = await _hardware.CollectAsync();
         TechnologiesList.ItemsSource = inventory.Technologies;
         HardwareList.ItemsSource = inventory.Components;
+        NetworkAdaptersList.ItemsSource = inventory.NetworkAdapters ?? Array.Empty<NetworkAdapterInfo>();
+        PublicIpText.Text = inventory.PublicIpAddress;
+
+        if (inventory.System is { } system)
+        {
+            OperatingSystemText.Text = system.OperatingSystem;
+            OperatingSystemVersionText.Text = $"Version {system.Version}";
+            OsBuildText.Text = system.Build;
+            OsArchitectureText.Text = system.Architecture;
+            ComputerNameText.Text = system.ComputerName;
+            UserNameText.Text = system.UserName;
+            InstalledDateText.Text = system.InstalledOn;
+            SystemUptimeText.Text = system.Uptime;
+            BootModeText.Text = system.BootMode;
+            TpmVersionText.Text = system.TpmVersion;
+        }
+
+        var connectedAdapter = inventory.NetworkAdapters?.FirstOrDefault(adapter => adapter.IsConnected)
+            ?? inventory.NetworkAdapters?.FirstOrDefault();
+        NetworkGatewayText.Text = connectedAdapter?.Gateway ?? "Non disponible";
+        NetworkDnsText.Text = connectedAdapter?.DnsServers ?? "Non disponible";
     }
 
     private void BuildCleanupOptions()
     {
         if (CleanupOptionsPanel.Children.Count > 0) return;
         foreach (var option in _cleaner.GetOptions())
-            CleanupOptionsPanel.Children.Add(new CheckBox { Content = $"{option.Name} — {option.Description}", Tag = option.Id, IsChecked = option.SelectedByDefault });
+        {
+            var text = new StackPanel { Spacing = 2 };
+            text.Children.Add(new TextBlock { Text = option.Name, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            text.Children.Add(new TextBlock
+            {
+                Text = option.RequiresElevation ? $"{option.Description} · Administrateur" : option.Description,
+                FontSize = 12,
+                Opacity = 0.58,
+                TextWrapping = TextWrapping.Wrap
+            });
+            var checkBox = new CheckBox
+            {
+                Content = text,
+                Tag = option.Id,
+                IsChecked = option.SelectedByDefault
+            };
+            if (Resources.TryGetValue("CleanupOptionCheckBoxStyle", out var style) && style is Style checkBoxStyle)
+                checkBox.Style = checkBoxStyle;
+            CleanupOptionsPanel.Children.Add(checkBox);
+        }
     }
 
     private IEnumerable<string> SelectedCleanupIds() => CleanupOptionsPanel.Children.OfType<CheckBox>().Where(x => x.IsChecked == true).Select(x => (string)x.Tag);
@@ -348,7 +393,12 @@ public sealed partial class ControlCenterPage : Page
         CleanupStatusText.Text = $"{results.Sum(x => x.ReclaimedBytes) / 1024d / 1024d:0.0} Mo libérés · {results.Sum(x => x.SkippedItems)} élément(s) ignoré(s).";
     }
 
-    private async Task LoadApplicationsAsync() => AppsPicker.ItemsSource = await _uninstaller.GetInstalledApplicationsAsync();
+    private async Task LoadApplicationsAsync()
+    {
+        var applications = await _uninstaller.GetInstalledApplicationsAsync();
+        AppsPicker.ItemsSource = applications;
+        TaskApplicationsList.ItemsSource = applications;
+    }
 
     private async void AnalyzeUninstallButton_Click(object sender, RoutedEventArgs e)
     {
@@ -382,13 +432,46 @@ public sealed partial class ControlCenterPage : Page
     {
         DiagnosticsSummaryText.Text = "Diagnostic en cours…";
         HealthScoreText.Text = "…";
+        var selectedIds = DiagnosticsList.SelectedItems
+            .OfType<DiagnosticCheckResult>()
+            .Select(check => check.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var report = await _diagnostics.RunAsync();
-        _lastDiagnosticChecks = report.Checks;
+        _lastDiagnosticChecks = selectedIds.Count == 0
+            ? report.Checks
+            : report.Checks.Where(check => selectedIds.Contains(check.Id)).ToList();
         ApplyHealthFilters();
-        var scored = report.HealthyCount + report.WarningCount + report.CriticalCount;
-        var score = scored == 0 ? 0 : (int)Math.Round(report.HealthyCount * 100d / scored);
+        var healthy = _lastDiagnosticChecks.Count(check => check.State == DiagnosticState.Healthy);
+        var warnings = _lastDiagnosticChecks.Count(check => check.State == DiagnosticState.Warning);
+        var critical = _lastDiagnosticChecks.Count(check => check.State == DiagnosticState.Critical);
+        var scored = healthy + warnings + critical;
+        var score = scored == 0 ? 0 : (int)Math.Round(healthy * 100d / scored);
         HealthScoreText.Text = $"{score}/100";
-        DiagnosticsSummaryText.Text = $"{report.HealthyCount} sains · {report.WarningCount} avertissements · {report.CriticalCount} critiques";
+        HealthScoreBar.Value = score;
+        HealthyCountText.Text = healthy.ToString();
+        WarningCountText.Text = warnings.ToString();
+        CriticalCountText.Text = critical.ToString();
+        DiagnosticsSummaryText.Text = $"{healthy} sains · {warnings} avertissements · {critical} critiques";
+    }
+
+    private void HealthModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string mode }) return;
+        if (mode == "Cleanup")
+        {
+            SelectCategory("DeepCleanup");
+            return;
+        }
+
+        _healthSection = mode;
+        HealthCategoryPicker.SelectedIndex = mode switch
+        {
+            "Network" => 6,
+            "Storage" => 2,
+            _ => 0
+        };
+        HealthStatePicker.SelectedIndex = 0;
+        ApplyHealthFilters();
     }
 
     private void HealthFilter_SelectionChanged(object sender, SelectionChangedEventArgs e) => ApplyHealthFilters();
@@ -397,6 +480,14 @@ public sealed partial class ControlCenterPage : Page
     {
         if (DiagnosticsList is null || HealthCategoryPicker is null || HealthStatePicker is null) return;
         IEnumerable<DiagnosticCheckResult> checks = _lastDiagnosticChecks;
+        checks = _healthSection switch
+        {
+            "System" => checks.Where(check => check.Category is not "Réseau" and not "Stockage"),
+            "Network" => checks.Where(check => check.Category == "Réseau"),
+            "Storage" => checks.Where(check => check.Category == "Stockage"),
+            "Fixes" => checks.Where(check => check.State is DiagnosticState.Warning or DiagnosticState.Critical),
+            _ => checks
+        };
         if (HealthCategoryPicker.SelectedIndex > 0 && HealthCategoryPicker.SelectedItem is string category)
             checks = checks.Where(x => string.Equals(x.Category, category, StringComparison.OrdinalIgnoreCase));
 
@@ -413,16 +504,121 @@ public sealed partial class ControlCenterPage : Page
 
     private void ClearDiagnosticsButton_Click(object sender, RoutedEventArgs e)
     {
-        _lastDiagnosticChecks = Array.Empty<DiagnosticCheckResult>();
-        DiagnosticsList.ItemsSource = null;
+        LoadDiagnosticCatalog();
         HealthScoreText.Text = "—";
-        DiagnosticsSummaryText.Text = "Aucun diagnostic lancé";
+        HealthScoreBar.Value = 0;
+        HealthyCountText.Text = WarningCountText.Text = CriticalCountText.Text = "—";
+        DiagnosticsSummaryText.Text = "Sélectionne les contrôles à lancer";
     }
 
-    private void QuickNavButton_Click(object sender, RoutedEventArgs e)
+    private void LoadDiagnosticCatalog()
     {
-        if (sender is Button { Tag: string value } && int.TryParse(value, out var index))
-            MainTabView.SelectedIndex = index;
+        _lastDiagnosticChecks = new[]
+        {
+            Catalog("system-disk", "Stockage", "Espace du disque système", "Vérifie l’espace libre du volume Windows."),
+            Catalog("smart", "Stockage", "État SMART", "Recherche les alertes matérielles des disques."),
+            Catalog("file-system", "Stockage", "Système de fichiers", "Contrôle les erreurs et secteurs défectueux."),
+            Catalog("ram-load", "Système", "Utilisation mémoire", "Mesure la pression actuelle sur la mémoire."),
+            Catalog("windows-update", "Système", "Service Windows Update", "Vérifie la disponibilité du service de mise à jour."),
+            Catalog("defender", "Sécurité", "Protection Microsoft Defender", "Contrôle le service de protection Windows."),
+            Catalog("firewall", "Sécurité", "Pare-feu Windows", "Vérifie que le pare-feu est actif."),
+            Catalog("restore", "Sécurité", "Protection du système", "Vérifie la disponibilité des points de restauration."),
+            Catalog("secure-boot", "Sécurité", "Démarrage sécurisé", "Contrôle l’état Secure Boot publié par l’UEFI."),
+            Catalog("tpm", "Sécurité", "TPM", "Vérifie le module de sécurité matériel."),
+            Catalog("cpu-load", "Performances", "Charge processeur", "Mesure la charge globale du processeur."),
+            Catalog("gpu-driver", "Pilotes", "Pilote graphique", "Contrôle la version du pilote de la carte graphique."),
+            Catalog("driver-updates", "Pilotes", "Mises à jour de pilotes", "Recherche les pilotes proposés par Windows Update."),
+            Catalog("network", "Réseau", "Connectivité locale", "Vérifie qu’une interface réseau est active."),
+            Catalog("dns", "Réseau", "Serveurs DNS", "Contrôle la configuration des résolveurs DNS."),
+            Catalog("gateway", "Réseau", "Passerelle par défaut", "Vérifie la route locale vers Internet."),
+            Catalog("time-service", "Réseau", "Synchronisation de l’heure", "Contrôle le service de temps Windows."),
+            Catalog("battery", "Système", "Batterie", "Analyse la présence et le niveau de la batterie."),
+            Catalog("temperature", "Performances", "Température processeur", "Lit le capteur thermique publié par le firmware."),
+            Catalog("reboot", "Système", "Redémarrage en attente", "Recherche un redémarrage Windows requis."),
+            Catalog("events", "Stabilité", "Erreurs système récentes", "Analyse les erreurs critiques des dernières 24 heures.")
+        };
+        ApplyHealthFilters();
+    }
+
+    private static DiagnosticCheckResult Catalog(string id, string category, string name, string description) =>
+        new(id, category, name, DiagnosticState.Unknown, description, "Sélectionne ce contrôle puis lance l’analyse.");
+
+    private void CategoryNavigationView_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (CategoryNavigationView.SelectedItem is null && CategoryNavigationView.MenuItems.FirstOrDefault() is NavigationViewItem first)
+            CategoryNavigationView.SelectedItem = first;
+        SelectCategory((CategoryNavigationView.SelectedItem as NavigationViewItem)?.Tag?.ToString() ?? "GameBooster");
+    }
+
+    private void CategoryNavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args) =>
+        SelectCategory(args.SelectedItemContainer?.Tag?.ToString() ?? "GameBooster");
+
+    private void SelectCategory(string category)
+    {
+        GameBoosterView.Visibility = category == "GameBooster" ? Visibility.Visible : Visibility.Collapsed;
+        HardwareView.Visibility = category == "Hardware" ? Visibility.Visible : Visibility.Collapsed;
+        DeepCleanupView.Visibility = category == "DeepCleanup" ? Visibility.Visible : Visibility.Collapsed;
+        SystemHealthView.Visibility = category == "SystemHealth" ? Visibility.Visible : Visibility.Collapsed;
+        TaskManagerView.Visibility = category == "TaskManager" ? Visibility.Visible : Visibility.Collapsed;
+
+        if (category == "SystemHealth" && SystemHealthModeButton.IsChecked != true)
+        {
+            _healthSection = "System";
+            SystemHealthModeButton.IsChecked = true;
+            HealthCategoryPicker.SelectedIndex = 0;
+            HealthStatePicker.SelectedIndex = 0;
+            ApplyHealthFilters();
+        }
+
+        var item = CategoryNavigationView.MenuItems.OfType<NavigationViewItem>()
+            .FirstOrDefault(candidate => string.Equals(candidate.Tag?.ToString(), category, StringComparison.Ordinal));
+        if (item is not null && !ReferenceEquals(CategoryNavigationView.SelectedItem, item))
+            CategoryNavigationView.SelectedItem = item;
+    }
+
+    private async Task RefreshTaskManagerAsync()
+    {
+        var snapshot = await _taskManager.CollectAsync();
+        TaskProcessesList.ItemsSource = snapshot.Processes;
+        StartupItemsList.ItemsSource = snapshot.StartupItems;
+        WindowsServicesList.ItemsSource = snapshot.Services;
+        ProcessCountText.Text = $"{snapshot.Processes.Count} processus · {snapshot.Processes.Sum(process => process.MemoryBytes) / 1024d / 1024d / 1024d:0.0} Go de mémoire";
+    }
+
+    private async void RefreshTaskManagerButton_Click(object sender, RoutedEventArgs e)
+    {
+        TaskManagerStatusText.Text = "Actualisation des processus, du démarrage et des services…";
+        await Task.WhenAll(RefreshTaskManagerAsync(), LoadApplicationsAsync());
+        TaskManagerStatusText.Text = "Données Windows actualisées.";
+    }
+
+    private async void EndTaskButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (TaskProcessesList.SelectedItem is not TaskProcessInfo process || !process.CanTerminate)
+        {
+            TaskManagerStatusText.Text = "Sélectionne un processus utilisateur pouvant être arrêté.";
+            return;
+        }
+
+        var confirmation = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = $"Terminer {process.Name} ?",
+            Content = "Les données non enregistrées de cette application peuvent être perdues.",
+            PrimaryButtonText = "Terminer la tâche",
+            CloseButtonText = "Annuler",
+            DefaultButton = ContentDialogButton.Close
+        };
+        if (await confirmation.ShowAsync() != ContentDialogResult.Primary) return;
+        var result = await _taskManager.TerminateProcessAsync(process.Id);
+        TaskManagerStatusText.Text = result.Message;
+        if (result.Succeeded) await RefreshTaskManagerAsync();
+    }
+
+    private void OpenWindowsTaskManagerButton_Click(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("taskmgr.exe") { UseShellExecute = true }); }
+        catch (Exception ex) { TaskManagerStatusText.Text = $"Impossible d’ouvrir le Gestionnaire Windows : {ex.Message}"; }
     }
 
     private async void OpenDocumentationButton_Click(object sender, RoutedEventArgs e) =>

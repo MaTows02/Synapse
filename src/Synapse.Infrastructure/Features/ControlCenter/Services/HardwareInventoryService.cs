@@ -1,4 +1,7 @@
 using System.Management;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using Microsoft.Win32;
 using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
@@ -7,8 +10,14 @@ namespace Synapse.Infrastructure.Features.ControlCenter.Services;
 
 public sealed class HardwareInventoryService : IHardwareInventoryService
 {
-    public Task<HardwareInventory> CollectAsync(CancellationToken cancellationToken = default) =>
-        Task.Run(() => Collect(cancellationToken), cancellationToken);
+    private static readonly HttpClient PublicIpClient = new() { Timeout = TimeSpan.FromSeconds(2) };
+
+    public async Task<HardwareInventory> CollectAsync(CancellationToken cancellationToken = default)
+    {
+        var inventory = await Task.Run(() => Collect(cancellationToken), cancellationToken).ConfigureAwait(false);
+        var publicIp = await CollectPublicIpAsync(cancellationToken).ConfigureAwait(false);
+        return inventory with { PublicIpAddress = publicIp };
+    }
 
     private static HardwareInventory Collect(CancellationToken cancellationToken)
     {
@@ -34,7 +43,116 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
         cancellationToken.ThrowIfCancellationRequested();
         var technologies = CollectTechnologies();
         var driverUpdates = CountAvailableDriverUpdates();
-        return new HardwareInventory(DateTimeOffset.Now, components, technologies, driverUpdates);
+        var system = CollectSystemOverview(technologies);
+        var networkAdapters = CollectNetworkAdapters();
+        return new HardwareInventory(DateTimeOffset.Now, components, technologies, driverUpdates, system, networkAdapters);
+    }
+
+    private static SystemOverview CollectSystemOverview(IReadOnlyList<TechnologyStatus> technologies)
+    {
+        var operatingSystem = "Windows";
+        var version = Environment.OSVersion.Version.ToString();
+        var build = Environment.OSVersion.Version.Build.ToString();
+        var architecture = Environment.Is64BitOperatingSystem ? "64 bits" : "32 bits";
+        var installedOn = "Non disponible";
+        var uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
+
+        try
+        {
+            using var searcher = new ManagementObjectSearcher("SELECT Caption, Version, BuildNumber, OSArchitecture, InstallDate, LastBootUpTime FROM Win32_OperatingSystem");
+            using var results = searcher.Get();
+            foreach (ManagementObject item in results)
+            {
+                operatingSystem = Text(item["Caption"]);
+                version = Text(item["Version"]);
+                build = Text(item["BuildNumber"]);
+                architecture = Text(item["OSArchitecture"]);
+                installedOn = FormatManagementDate(item["InstallDate"]);
+                var lastBoot = ParseManagementDate(item["LastBootUpTime"]);
+                if (lastBoot.HasValue) uptime = DateTime.Now - lastBoot.Value;
+                break;
+            }
+        }
+        catch (ManagementException) { }
+
+        var secureBoot = technologies.FirstOrDefault(x => x.Id == "secure-boot")?.State;
+        var bootMode = secureBoot == TechnologyState.Enabled ? "UEFI · Secure Boot" : "UEFI / BIOS";
+        return new SystemOverview(
+            operatingSystem,
+            version,
+            build,
+            architecture,
+            Environment.MachineName,
+            Environment.UserName,
+            installedOn,
+            FormatUptime(uptime),
+            bootMode,
+            ReadTpmVersion());
+    }
+
+    private static IReadOnlyList<NetworkAdapterInfo> CollectNetworkAdapters()
+    {
+        try
+        {
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Where(adapter => adapter.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                                  adapter.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                .OrderByDescending(adapter => adapter.OperationalStatus == OperationalStatus.Up)
+                .Select(adapter =>
+                {
+                    var properties = adapter.GetIPProperties();
+                    var localIp = properties.UnicastAddresses
+                        .Select(address => address.Address)
+                        .FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address));
+                    var macBytes = adapter.GetPhysicalAddress().GetAddressBytes();
+                    var mac = macBytes.Length == 0 ? "Non disponible" : string.Join(":", macBytes.Select(value => value.ToString("X2")));
+                    var gateways = properties.GatewayAddresses.Select(item => item.Address.ToString()).Where(value => value != "0.0.0.0");
+                    var dns = properties.DnsAddresses.Select(address => address.ToString());
+                    return new NetworkAdapterInfo(
+                        adapter.Id,
+                        adapter.Name,
+                        adapter.Description,
+                        adapter.NetworkInterfaceType.ToString(),
+                        localIp?.ToString() ?? "Non disponible",
+                        mac,
+                        adapter.Speed <= 0 ? "Non disponible" : $"{adapter.Speed / 1_000_000d:0.#} Mbit/s",
+                        string.Join(", ", gateways.DefaultIfEmpty("Non disponible")),
+                        string.Join(", ", dns.DefaultIfEmpty("Non disponible")),
+                        adapter.OperationalStatus == OperationalStatus.Up);
+                })
+                .ToList();
+        }
+        catch (NetworkInformationException)
+        {
+            return Array.Empty<NetworkAdapterInfo>();
+        }
+    }
+
+    private static async Task<string> CollectPublicIpAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await PublicIpClient.GetAsync("https://api.ipify.org", cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return "Non disponible";
+            var value = (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)).Trim();
+            return IPAddress.TryParse(value, out _) ? value : "Non disponible";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return "Non disponible";
+        }
+    }
+
+    private static string ReadTpmVersion()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher("root\\CIMV2\\Security\\MicrosoftTpm", "SELECT SpecVersion FROM Win32_Tpm");
+            using var results = searcher.Get();
+            foreach (ManagementObject item in results) return Text(item["SpecVersion"]).Split(',')[0];
+        }
+        catch (ManagementException) { }
+        return "Non disponible";
     }
 
     private static IReadOnlyList<TechnologyStatus> CollectTechnologies()
@@ -136,6 +254,18 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
         try { return ManagementDateTimeConverter.ToDateTime(text).ToString("d"); }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or FormatException) { return "Non disponible"; }
     }
+
+    private static DateTime? ParseManagementDate(object? value)
+    {
+        var text = value?.ToString();
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        try { return ManagementDateTimeConverter.ToDateTime(text); }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or FormatException) { return null; }
+    }
+
+    private static string FormatUptime(TimeSpan uptime) => uptime.TotalDays >= 1
+        ? $"{(int)uptime.TotalDays} j {uptime.Hours} h {uptime.Minutes} min"
+        : $"{uptime.Hours} h {uptime.Minutes} min {uptime.Seconds} s";
 
     private static string Blur(object? value)
     {
