@@ -76,11 +76,11 @@ public sealed class DeviceControlService : IDeviceControlService
                     info.Name,
                     "Windows Dynamic Lighting",
                     false,
-                    lampArray.IsAvailable,
+                    lampArray.IsConnected,
                     "Windows Dynamic Lighting",
-                    lampArray.IsAvailable
-                        ? $"{lampArray.LampCount} zone(s) lumineuse(s) contrôlable(s) via l’API Windows."
-                        : $"{lampArray.LampCount} zone(s) détectée(s), mais Windows a attribué le contrôle à une autre application.",
+                    lampArray.IsConnected
+                        ? $"{lampArray.LampCount} zone(s) lumineuse(s) détectée(s) via l’API Windows. La priorité de contrôle dépend des réglages Dynamic Lighting."
+                        : $"{lampArray.LampCount} zone(s) détectée(s), mais le contrôleur est actuellement déconnecté.",
                     DeviceControlKind.RgbController,
                     "Windows",
                     "Windows.Devices.Lights.LampArray"));
@@ -252,7 +252,7 @@ public sealed class DeviceControlService : IDeviceControlService
                     Convert.ToByte(rgbHex.Substring(1, 2), 16),
                     Convert.ToByte(rgbHex.Substring(3, 2), 16),
                     Convert.ToByte(rgbHex.Substring(5, 2), 16));
-                if (!lampArray.IsAvailable) return OperationResult.Failure("Windows a attribué ce contrôleur RGB à une autre application.");
+                if (!lampArray.IsConnected) return OperationResult.Failure("Le contrôleur Dynamic Lighting est déconnecté.");
                 lampArray.SetColor(color);
                 if (persist) await PersistAsync(deviceId, fanPercent, rgbHex, cancellationToken).ConfigureAwait(false);
                 return OperationResult.Success("Couleur appliquée avec Windows Dynamic Lighting.");
