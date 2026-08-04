@@ -85,7 +85,10 @@ public sealed class DeepUninstallService : IDeepUninstallService
                     key?.GetValue("Publisher")?.ToString() ?? "Éditeur inconnu",
                     key?.GetValue("DisplayVersion")?.ToString() ?? "",
                     key?.GetValue("InstallLocation")?.ToString() ?? "",
-                    command);
+                    command,
+                    NormalizeIconPath(key?.GetValue("DisplayIcon")?.ToString()),
+                    ClassifyImportance(name, key?.GetValue("Publisher")?.ToString()),
+                    ImportanceDetail(name, key?.GetValue("Publisher")?.ToString()));
             }
         }
         return apps.Values.OrderBy(x => x.Name).ToList();
@@ -160,6 +163,33 @@ public sealed class DeepUninstallService : IDeepUninstallService
     }
 
     private static string Normalize(string value) => new(value.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+    private static string NormalizeIconPath(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var expanded = Environment.ExpandEnvironmentVariables(value.Trim().Trim('"'));
+        var comma = expanded.LastIndexOf(',');
+        if (comma > 2 && int.TryParse(expanded[(comma + 1)..], out _)) expanded = expanded[..comma];
+        expanded = expanded.Trim().Trim('"');
+        return File.Exists(expanded) ? expanded : string.Empty;
+    }
+
+    private static string ClassifyImportance(string name, string? publisher)
+    {
+        var text = $"{name} {publisher}";
+        if (text.Contains("driver", StringComparison.OrdinalIgnoreCase) || text.Contains("chipset", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("runtime", StringComparison.OrdinalIgnoreCase) || text.Contains("redistributable", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("Microsoft .NET", StringComparison.OrdinalIgnoreCase)) return "Système";
+        if (text.Contains("security", StringComparison.OrdinalIgnoreCase) || text.Contains("antivirus", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("Microsoft", StringComparison.OrdinalIgnoreCase)) return "Importante";
+        return "Standard";
+    }
+
+    private static string ImportanceDetail(string name, string? publisher) => ClassifyImportance(name, publisher) switch
+    {
+        "Système" => "Composant, pilote ou environnement d’exécution : désinstallation déconseillée sans vérification.",
+        "Importante" => "Application liée à Windows ou à la sécurité : vérifiez son rôle avant suppression.",
+        _ => "Application utilisateur : suppression généralement sans impact sur Windows."
+    };
     private static string IdFor(string source, string subKey) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{source}|{subKey}")))[..20];
     private static IEnumerable<(RegistryKey Hive, string Path, string Label)> RegistrySources()
     {

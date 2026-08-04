@@ -170,6 +170,7 @@ public sealed partial class SoftwareAppsPage : Page
 
     private void WindowsAppsDataGrid_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyColumnHeaders(WindowsAppsDataGrid);
         var checkBox = FindSelectAllCheckBox(WindowsAppsDataGrid);
         if (checkBox != null)
         {
@@ -180,6 +181,7 @@ public sealed partial class SoftwareAppsPage : Page
 
     private void ExternalAppsDataGrid_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyColumnHeaders(ExternalAppsDataGrid);
         var checkBox = FindSelectAllCheckBox(ExternalAppsDataGrid);
         if (checkBox != null)
         {

@@ -56,6 +56,48 @@
                              NavigationTag="Customize"
                              IsCompact="{x:Bind IsCompact, Mode=OneWay}"
                              Clicked="NavButton_Clicked"/>
+
+            <!-- Control Center tools are first-class destinations. They deliberately live
+                 directly below Personnaliser instead of being nested inside Dashboard. -->
+            <local:NavButton x:Name="GameBoosterButton"
+                             IconSymbol="Gauge"
+                             Text="Game Booster"
+                             AutomationProperties.Name="Game Booster"
+                             NavigationTag="GameBooster"
+                             IsCompact="{x:Bind IsCompact, Mode=OneWay}"
+                             Clicked="NavButton_Clicked"/>
+
+            <local:NavButton x:Name="HardwareButton"
+                             IconSymbol="WrenchScrewdriver"
+                             Text="Matériel"
+                             AutomationProperties.Name="Matériel"
+                             NavigationTag="Hardware"
+                             IsCompact="{x:Bind IsCompact, Mode=OneWay}"
+                             Clicked="NavButton_Clicked"/>
+
+            <local:NavButton x:Name="DeepCleanupButton"
+                             IconSymbol="Delete"
+                             Text="Nettoyage profond"
+                             AutomationProperties.Name="Nettoyage profond"
+                             NavigationTag="DeepCleanup"
+                             IsCompact="{x:Bind IsCompact, Mode=OneWay}"
+                             Clicked="NavButton_Clicked"/>
+
+            <local:NavButton x:Name="SystemHealthButton"
+                             IconSymbol="ShieldTask"
+                             Text="Santé système"
+                             AutomationProperties.Name="Santé système"
+                             NavigationTag="SystemHealth"
+                             IsCompact="{x:Bind IsCompact, Mode=OneWay}"
+                             Clicked="NavButton_Clicked"/>
+
+            <local:NavButton x:Name="TaskManagerButton"
+                             IconSymbol="Apps"
+                             Text="Gestionnaire des tâches"
+                             AutomationProperties.Name="Gestionnaire des tâches"
+                             NavigationTag="TaskManager"
+                             IsCompact="{x:Bind IsCompact, Mode=OneWay}"
+                             Clicked="NavButton_Clicked"/>
         </StackPanel>
 
         <!-- Bottom Navigation Buttons -->

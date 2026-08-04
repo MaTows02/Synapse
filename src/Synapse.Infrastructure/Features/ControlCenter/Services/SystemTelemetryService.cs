@@ -7,7 +7,14 @@ namespace Synapse.Infrastructure.Features.ControlCenter.Services;
 public sealed class SystemTelemetryService : ISystemTelemetryService
 {
     public Task<SystemTelemetrySnapshot> SampleAsync(CancellationToken cancellationToken = default) =>
-        Task.Run(() => Sample(cancellationToken), cancellationToken);
+        Task.Run(() =>
+        {
+            try { return Sample(cancellationToken); }
+            catch when (!cancellationToken.IsCancellationRequested)
+            {
+                return new SystemTelemetrySnapshot(DateTimeOffset.Now, 0, 0, 0, 0, 0, null, Array.Empty<FanStatus>());
+            }
+        }, cancellationToken);
 
     private static SystemTelemetrySnapshot Sample(CancellationToken cancellationToken)
     {

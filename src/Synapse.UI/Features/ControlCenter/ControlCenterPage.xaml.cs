@@ -7,11 +7,13 @@ using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
 using Windows.System;
 using Windows.UI;
+using Synapse.UI.Features.Common.Helpers;
 
 namespace Synapse.UI.Features.ControlCenter;
 
 public sealed partial class ControlCenterPage : Page
 {
+    public string CurrentCategory => _requestedCategory;
     private readonly ISystemTelemetryService _telemetry = App.Services.GetRequiredService<ISystemTelemetryService>();
     private readonly IHardwareInventoryService _hardware = App.Services.GetRequiredService<IHardwareInventoryService>();
     private readonly ITaskManagerService _taskManager = App.Services.GetRequiredService<ITaskManagerService>();
@@ -29,6 +31,10 @@ public sealed partial class ControlCenterPage : Page
     private readonly Dictionary<string, Control> _gameTuningInputs = new(StringComparer.OrdinalIgnoreCase);
     private bool _ignoreToggleEvents;
     private string _healthSection = "System";
+    private string _requestedCategory = "GameBooster";
+    private readonly HashSet<string> _loadedCategories = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FrameworkElement> _loadedViews = new(StringComparer.Ordinal);
+    private bool _pageLoaded;
 
     public ControlCenterPage()
     {
@@ -38,17 +44,51 @@ public sealed partial class ControlCenterPage : Page
         Loaded += ControlCenterPage_Loaded;
     }
 
-    protected override void OnNavigatedTo(NavigationEventArgs e) { base.OnNavigatedTo(e); _timer.Start(); }
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        if (e.Parameter is string category) _requestedCategory = category;
+        SelectCategory(_requestedCategory);
+    }
     protected override void OnNavigatedFrom(NavigationEventArgs e) { _timer.Stop(); base.OnNavigatedFrom(e); }
 
     private async void ControlCenterPage_Loaded(object sender, RoutedEventArgs e)
     {
-        BuildCleanupOptions();
-        BuildBoosterRules();
-        await Task.WhenAll(RefreshDevicesAsync(), RefreshHardwareAsync(), LoadApplicationsAsync(), RefreshGamesAsync(), RefreshTaskManagerAsync());
-        await _devices.ApplyPersistedProfilesAsync();
-        await _booster.StartMonitoringAsync();
-        await RefreshTelemetryAsync();
+        _pageLoaded = true;
+        await EnsureCategoryLoadedAsync(_requestedCategory);
+    }
+
+    private async Task EnsureCategoryLoadedAsync(string category)
+    {
+        if (!_loadedCategories.Add(category)) return;
+        try
+        {
+            switch (category)
+            {
+                case "GameBooster":
+                    BuildBoosterRules();
+                    await RefreshGamesAsync();
+                    await _booster.StartMonitoringAsync();
+                    break;
+                case "Hardware":
+                    await Task.WhenAll(RefreshDevicesAsync(), RefreshHardwareAsync());
+                    await _devices.ApplyPersistedProfilesAsync();
+                    await RefreshTelemetryAsync();
+                    break;
+                case "DeepCleanup":
+                    BuildCleanupOptions();
+                    await LoadApplicationsAsync();
+                    break;
+                case "TaskManager":
+                    await Task.WhenAll(RefreshTaskManagerAsync(), LoadApplicationsAsync());
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadedCategories.Remove(category);
+            ShowOverviewResult(OperationResult.Failure($"Chargement incomplet : {ex.Message}"));
+        }
     }
 
     private async void TelemetryTimer_Tick(object? sender, object e) => await RefreshTelemetryAsync();
@@ -141,6 +181,27 @@ public sealed partial class ControlCenterPage : Page
 
     private async void ScanGamesButton_Click(object sender, RoutedEventArgs e) => await RefreshGamesAsync();
 
+    private async void AddManualGameButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.MainWindow is not Window window) return;
+        var path = Win32FileDialogHelper.ShowOpenFilePicker(
+            window, "Ajouter un jeu à Synapse", "Applications Windows", "*.exe");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        try
+        {
+            var game = await _games.AddManualAsync(path);
+            await RefreshGamesAsync();
+            GamesList.SelectedItem = GamesList.Items.OfType<DetectedGame>()
+                .FirstOrDefault(item => string.Equals(item.Id, game.Id, StringComparison.OrdinalIgnoreCase));
+            GameStatusText.Text = $"{game.Name} a été ajouté manuellement avec son exécutable et son icône.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            GameStatusText.Text = $"Ajout impossible : {ex.Message}";
+        }
+    }
+
     private async Task RefreshGamesAsync()
     {
         GameStatusText.Text = "Analyse en cours…";
@@ -154,6 +215,7 @@ public sealed partial class ControlCenterPage : Page
     {
         if (GamesList.SelectedItem is not DetectedGame game) return;
         SelectedGameNameText.Text = game.Name;
+        SelectedGameIcon.ExecutablePath = game.ExecutablePath;
         SelectedGamePathText.Text = string.IsNullOrWhiteSpace(game.ExecutablePath)
             ? "Exécutable non confirmé : le profil ne peut pas encore être activé."
             : $"{game.Launcher} · {game.ExecutablePath}";
@@ -309,7 +371,15 @@ public sealed partial class ControlCenterPage : Page
     private async void RefreshHardwareButton_Click(object sender, RoutedEventArgs e) => await RefreshHardwareAsync();
     private async Task RefreshHardwareAsync()
     {
-        var inventory = await _hardware.CollectAsync();
+        LiveStatusText.Text = "● INVENTAIRE EN COURS";
+        HardwareInventory inventory;
+        try { inventory = await _hardware.CollectAsync(); }
+        catch (Exception ex)
+        {
+            LiveStatusText.Text = "● INVENTAIRE INDISPONIBLE";
+            ShowOverviewResult(OperationResult.Failure($"Inventaire matériel incomplet : {ex.Message}"));
+            return;
+        }
         TechnologiesList.ItemsSource = inventory.Technologies;
         HardwareList.ItemsSource = inventory.Components;
         NetworkAdaptersList.ItemsSource = inventory.NetworkAdapters ?? Array.Empty<NetworkAdapterInfo>();
@@ -333,6 +403,7 @@ public sealed partial class ControlCenterPage : Page
             ?? inventory.NetworkAdapters?.FirstOrDefault();
         NetworkGatewayText.Text = connectedAdapter?.Gateway ?? "Non disponible";
         NetworkDnsText.Text = connectedAdapter?.DnsServers ?? "Non disponible";
+        LiveStatusText.Text = $"● ACTUALISÉ · {inventory.CollectedAt:HH:mm:ss}";
     }
 
     private void BuildCleanupOptions()
@@ -400,6 +471,14 @@ public sealed partial class ControlCenterPage : Page
         TaskApplicationsList.ItemsSource = applications;
     }
 
+    private void AppsPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SelectedAppImportanceText.Text = AppsPicker.SelectedItem is InstalledApplication app
+            ? $"{app.Importance} · {app.ImportanceDetail}"
+            : "L’importance et l’impact seront affichés après sélection.";
+        _uninstallPlan = null;
+    }
+
     private async void AnalyzeUninstallButton_Click(object sender, RoutedEventArgs e)
     {
         if (AppsPicker.SelectedItem is not InstalledApplication app) return;
@@ -436,7 +515,18 @@ public sealed partial class ControlCenterPage : Page
             .OfType<DiagnosticCheckResult>()
             .Select(check => check.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var report = await _diagnostics.RunAsync();
+        DiagnosticReport report;
+        try
+        {
+            report = await _diagnostics.RunAsync(new Progress<DiagnosticCheckResult>(check =>
+                DiagnosticsSummaryText.Text = $"Analyse : {check.Name}…"));
+        }
+        catch (Exception ex)
+        {
+            DiagnosticsSummaryText.Text = $"Diagnostic interrompu : {ex.Message}";
+            HealthScoreText.Text = "—";
+            return;
+        }
         _lastDiagnosticChecks = selectedIds.Count == 0
             ? report.Checks
             : report.Checks.Where(check => selectedIds.Contains(check.Id)).ToList();
@@ -541,25 +631,37 @@ public sealed partial class ControlCenterPage : Page
     }
 
     private static DiagnosticCheckResult Catalog(string id, string category, string name, string description) =>
-        new(id, category, name, DiagnosticState.Unknown, description, "Sélectionne ce contrôle puis lance l’analyse.");
+        new(id, category, name, DiagnosticState.NotRun, description, "Sélectionne ce contrôle puis lance l’analyse.");
 
     private void CategoryNavigationView_Loaded(object sender, RoutedEventArgs e)
     {
         if (CategoryNavigationView.SelectedItem is null && CategoryNavigationView.MenuItems.FirstOrDefault() is NavigationViewItem first)
             CategoryNavigationView.SelectedItem = first;
-        SelectCategory((CategoryNavigationView.SelectedItem as NavigationViewItem)?.Tag?.ToString() ?? "GameBooster");
+        SelectCategory(_requestedCategory);
     }
 
     private void CategoryNavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args) =>
         SelectCategory(args.SelectedItemContainer?.Tag?.ToString() ?? "GameBooster");
 
+    public void OpenCategory(string category)
+    {
+        _requestedCategory = category;
+        SelectCategory(category);
+    }
+
     private void SelectCategory(string category)
     {
-        GameBoosterView.Visibility = category == "GameBooster" ? Visibility.Visible : Visibility.Collapsed;
-        HardwareView.Visibility = category == "Hardware" ? Visibility.Visible : Visibility.Collapsed;
-        DeepCleanupView.Visibility = category == "DeepCleanup" ? Visibility.Visible : Visibility.Collapsed;
-        SystemHealthView.Visibility = category == "SystemHealth" ? Visibility.Visible : Visibility.Collapsed;
-        TaskManagerView.Visibility = category == "TaskManager" ? Visibility.Visible : Visibility.Collapsed;
+        _requestedCategory = category;
+        foreach (var view in _loadedViews.Values) view.Visibility = Visibility.Collapsed;
+        var viewName = category + "View";
+        if (!_loadedViews.TryGetValue(category, out var activeView) && FindName(viewName) is FrameworkElement loadedView)
+        {
+            activeView = loadedView;
+            _loadedViews[category] = loadedView;
+        }
+        if (activeView is not null) activeView.Visibility = Visibility.Visible;
+        if (category == "Hardware") _timer.Start(); else _timer.Stop();
+        if (_pageLoaded) _ = EnsureCategoryLoadedAsync(category);
 
         if (category == "SystemHealth" && SystemHealthModeButton.IsChecked != true)
         {
@@ -567,6 +669,10 @@ public sealed partial class ControlCenterPage : Page
             SystemHealthModeButton.IsChecked = true;
             HealthCategoryPicker.SelectedIndex = 0;
             HealthStatePicker.SelectedIndex = 0;
+            ApplyHealthFilters();
+        }
+        else if (category == "SystemHealth")
+        {
             ApplyHealthFilters();
         }
 
@@ -590,6 +696,17 @@ public sealed partial class ControlCenterPage : Page
         TaskManagerStatusText.Text = "Actualisation des processus, du démarrage et des services…";
         await Task.WhenAll(RefreshTaskManagerAsync(), LoadApplicationsAsync());
         TaskManagerStatusText.Text = "Données Windows actualisées.";
+    }
+
+    private async void StartupItemToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleSwitch { Tag: StartupItemInfo item } toggle || toggle.IsOn == item.IsEnabled) return;
+        toggle.IsEnabled = false;
+        var result = await _taskManager.SetStartupItemEnabledAsync(item.Id, toggle.IsOn);
+        TaskManagerStatusText.Text = result.Message;
+        if (!result.Succeeded) toggle.IsOn = item.IsEnabled;
+        else await RefreshTaskManagerAsync();
+        toggle.IsEnabled = true;
     }
 
     private async void EndTaskButton_Click(object sender, RoutedEventArgs e)

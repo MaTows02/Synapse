@@ -1,5 +1,7 @@
 using System.Management;
 using System.Text.Json;
+using Windows.Devices.Enumeration;
+using Windows.Devices.Lights;
 using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
 
@@ -47,6 +49,7 @@ public sealed class DeviceControlService : IDeviceControlService
         }
 
         devices.AddRange(await Task.Run(() => DiscoverWindowsDevices(cancellationToken), cancellationToken).ConfigureAwait(false));
+        devices.AddRange(await DiscoverDynamicLightingAsync(cancellationToken).ConfigureAwait(false));
 
         return devices
             .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
@@ -55,6 +58,39 @@ public sealed class DeviceControlService : IDeviceControlService
             .ThenBy(x => x.Manufacturer)
             .ThenBy(x => x.Name)
             .ToList();
+    }
+
+    private static async Task<IReadOnlyList<DeviceControlCapability>> DiscoverDynamicLightingAsync(CancellationToken cancellationToken)
+    {
+        var devices = new List<DeviceControlCapability>();
+        try
+        {
+            var found = await DeviceInformation.FindAllAsync(LampArray.GetDeviceSelector()).AsTask(cancellationToken).ConfigureAwait(false);
+            foreach (var info in found)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var lampArray = await LampArray.FromIdAsync(info.Id).AsTask(cancellationToken).ConfigureAwait(false);
+                if (lampArray is null) continue;
+                devices.Add(new DeviceControlCapability(
+                    $"lamp-array:{info.Id}",
+                    info.Name,
+                    "Windows Dynamic Lighting",
+                    false,
+                    lampArray.IsAvailable,
+                    "Windows Dynamic Lighting",
+                    lampArray.IsAvailable
+                        ? $"{lampArray.LampCount} zone(s) lumineuse(s) contrôlable(s) via l’API Windows."
+                        : $"{lampArray.LampCount} zone(s) détectée(s), mais Windows a attribué le contrôle à une autre application.",
+                    DeviceControlKind.RgbController,
+                    "Windows",
+                    "Windows.Devices.Lights.LampArray"));
+            }
+        }
+        catch
+        {
+            // Dynamic Lighting is optional and may be disabled or owned by another RGB application.
+        }
+        return devices;
     }
 
     private static IReadOnlyList<DeviceControlCapability> DiscoverWindowsDevices(CancellationToken cancellationToken)
@@ -204,6 +240,29 @@ public sealed class DeviceControlService : IDeviceControlService
 
     private async Task<OperationResult> ApplyAsync(string deviceId, int? fanPercent, string? rgbHex, bool persist, CancellationToken cancellationToken)
     {
+        if (deviceId.StartsWith("lamp-array:", StringComparison.OrdinalIgnoreCase) && rgbHex is not null)
+        {
+            try
+            {
+                var nativeId = deviceId["lamp-array:".Length..];
+                var lampArray = await LampArray.FromIdAsync(nativeId).AsTask(cancellationToken).ConfigureAwait(false);
+                if (lampArray is null) return OperationResult.Failure("Le contrôleur Dynamic Lighting n’est plus disponible.");
+                var color = Windows.UI.Color.FromArgb(
+                    255,
+                    Convert.ToByte(rgbHex.Substring(1, 2), 16),
+                    Convert.ToByte(rgbHex.Substring(3, 2), 16),
+                    Convert.ToByte(rgbHex.Substring(5, 2), 16));
+                if (!lampArray.IsAvailable) return OperationResult.Failure("Windows a attribué ce contrôleur RGB à une autre application.");
+                lampArray.SetColor(color);
+                if (persist) await PersistAsync(deviceId, fanPercent, rgbHex, cancellationToken).ConfigureAwait(false);
+                return OperationResult.Success("Couleur appliquée avec Windows Dynamic Lighting.");
+            }
+            catch (Exception ex)
+            {
+                return OperationResult.Failure($"Dynamic Lighting a refusé la commande : {ex.Message}");
+            }
+        }
+
         foreach (var adapter in _adapters)
         {
             if (!await adapter.OwnsAsync(deviceId, cancellationToken).ConfigureAwait(false)) continue;

@@ -32,37 +32,42 @@ public sealed class SystemDiagnosticsService : ISystemDiagnosticsService
 
         var checks = new List<DiagnosticCheckResult>();
         void Add(DiagnosticCheckResult result) { checks.Add(result); progress?.Report(result); }
+        void SafeAdd(string id, string category, string name, Func<DiagnosticCheckResult> check)
+        {
+            try { Add(check()); }
+            catch (Exception ex) { Add(Unknown(id, category, name, $"Contrôle indisponible : {ex.Message}")); }
+        }
 
         await Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Add(CheckSystemDisk());
-            Add(CheckSmart());
-            Add(CheckFileSystem());
-            Add(CheckPercent("ram-load", "Système", "Utilisation mémoire", snapshot.MemoryPercent, 85, 95));
-            Add(CheckService("windows-update", "Système", "Service Windows Update", "wuauserv", allowStopped: true));
-            Add(CheckService("defender", "Sécurité", "Protection Microsoft Defender", "WinDefend", allowStopped: false));
-            Add(CheckFirewall());
-            Add(_restore.IsEnabledForC()
+            SafeAdd("system-disk", "Stockage", "Espace du disque système", CheckSystemDisk);
+            SafeAdd("smart", "Stockage", "État SMART", CheckSmart);
+            SafeAdd("file-system", "Stockage", "Système de fichiers", CheckFileSystem);
+            SafeAdd("ram-load", "Système", "Utilisation mémoire", () => CheckPercent("ram-load", "Système", "Utilisation mémoire", snapshot.MemoryPercent, 85, 95));
+            SafeAdd("windows-update", "Système", "Service Windows Update", () => CheckService("windows-update", "Système", "Service Windows Update", "wuauserv", allowStopped: true));
+            SafeAdd("defender", "Sécurité", "Protection Microsoft Defender", () => CheckService("defender", "Sécurité", "Protection Microsoft Defender", "WinDefend", allowStopped: false));
+            SafeAdd("firewall", "Sécurité", "Pare-feu Windows", CheckFirewall);
+            SafeAdd("restore", "Sécurité", "Protection du système", () => _restore.IsEnabledForC()
                 ? Healthy("restore", "Sécurité", "Protection du système", "La restauration système est active.")
                 : Warning("restore", "Sécurité", "Protection du système", "La restauration système est désactivée.", "Activez-la avant les optimisations profondes."));
-            Add(FromTechnology(inventory, "secure-boot", "Sécurité"));
-            Add(FromTechnology(inventory, "tpm", "Sécurité"));
-            Add(CheckPercent("cpu-load", "Performances", "Charge processeur", snapshot.CpuPercent, 90, 98));
-            Add(CheckGpuDriver(inventory));
-            Add(inventory.DriversWithUpdatesAvailable < 0
+            SafeAdd("secure-boot", "Sécurité", "Démarrage sécurisé", () => FromTechnology(inventory, "secure-boot", "Sécurité"));
+            SafeAdd("tpm", "Sécurité", "TPM", () => FromTechnology(inventory, "tpm", "Sécurité"));
+            SafeAdd("cpu-load", "Performances", "Charge processeur", () => CheckPercent("cpu-load", "Performances", "Charge processeur", snapshot.CpuPercent, 90, 98));
+            SafeAdd("gpu-driver", "Pilotes", "Pilote graphique", () => CheckGpuDriver(inventory));
+            SafeAdd("driver-updates", "Pilotes", "Mises à jour de pilotes", () => inventory.DriversWithUpdatesAvailable < 0
                 ? Unknown("driver-updates", "Pilotes", "Mises à jour de pilotes", "Windows Update n’a pas pu publier l’état des pilotes.")
                 : inventory.DriversWithUpdatesAvailable == 0
                     ? Healthy("driver-updates", "Pilotes", "Mises à jour de pilotes", "Aucune mise à jour proposée par Windows Update.")
                     : Warning("driver-updates", "Pilotes", "Mises à jour de pilotes", $"{inventory.DriversWithUpdatesAvailable} mise(s) à jour disponible(s).", "Examinez-les avant installation."));
-            Add(CheckNetwork());
-            Add(CheckDns());
-            Add(CheckGateway());
-            Add(CheckService("time-service", "Réseau", "Synchronisation de l’heure", "W32Time", allowStopped: true));
-            Add(CheckBattery());
-            Add(CheckTemperature(snapshot.CpuTemperatureCelsius));
-            Add(CheckPendingReboot());
-            Add(CheckCriticalEvents());
+            SafeAdd("network", "Réseau", "Connectivité locale", CheckNetwork);
+            SafeAdd("dns", "Réseau", "Serveurs DNS", CheckDns);
+            SafeAdd("gateway", "Réseau", "Passerelle par défaut", CheckGateway);
+            SafeAdd("time-service", "Réseau", "Synchronisation de l’heure", () => CheckService("time-service", "Réseau", "Synchronisation de l’heure", "W32Time", allowStopped: true));
+            SafeAdd("battery", "Système", "Batterie", CheckBattery);
+            SafeAdd("temperature", "Performances", "Température processeur", () => CheckTemperature(snapshot.CpuTemperatureCelsius));
+            SafeAdd("reboot", "Système", "Redémarrage en attente", CheckPendingReboot);
+            SafeAdd("events", "Stabilité", "Erreurs système récentes", CheckCriticalEvents);
         }, cancellationToken).ConfigureAwait(false);
 
         return new DiagnosticReport(DateTimeOffset.Now, checks);
@@ -136,7 +141,8 @@ public sealed class SystemDiagnosticsService : ISystemDiagnosticsService
 
     private static DiagnosticCheckResult FromTechnology(HardwareInventory inventory, string id, string category)
     {
-        var item = inventory.Technologies.First(x => x.Id == id);
+        var item = inventory.Technologies.FirstOrDefault(x => x.Id == id);
+        if (item is null) return Unknown(id, category, id == "secure-boot" ? "Démarrage sécurisé" : "TPM", "Technologie non publiée par Windows.");
         return item.State == TechnologyState.Enabled ? Healthy(id, category, item.Name, item.Detail)
             : item.State == TechnologyState.Disabled ? Warning(id, category, item.Name, item.Detail, "Activez cette technologie dans Windows ou l’UEFI si compatible.")
             : Unknown(id, category, item.Name, item.Detail);

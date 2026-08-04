@@ -16,6 +16,7 @@ public interface ITaskManagerService
 {
     Task<TaskManagerSnapshot> CollectAsync(CancellationToken cancellationToken = default);
     Task<OperationResult> TerminateProcessAsync(int processId, CancellationToken cancellationToken = default);
+    Task<OperationResult> SetStartupItemEnabledAsync(string itemId, bool enabled, CancellationToken cancellationToken = default);
 }
 
 public interface IDeviceControlService
@@ -29,6 +30,7 @@ public interface IDeviceControlService
 public interface IGameDiscoveryService
 {
     Task<IReadOnlyList<DetectedGame>> DiscoverAsync(CancellationToken cancellationToken = default);
+    Task<DetectedGame> AddManualAsync(string executablePath, CancellationToken cancellationToken = default);
 }
 
 public interface IGameBoosterService : IDisposable

@@ -41,11 +41,35 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
                 ("Date", FormatManagementDate(item["ReleaseDate"])), ("Numéro de série", Blur(item["SerialNumber"]))));
 
         cancellationToken.ThrowIfCancellationRequested();
-        var technologies = CollectTechnologies();
-        var driverUpdates = CountAvailableDriverUpdates();
-        var system = CollectSystemOverview(technologies);
-        var networkAdapters = CollectNetworkAdapters();
+        IReadOnlyList<TechnologyStatus> technologies;
+        try { technologies = CollectTechnologies(); }
+        catch { technologies = DefaultTechnologies("Lecture Windows indisponible."); }
+        // A synchronous Windows Update COM search can block this page for minutes.
+        // Availability is intentionally left to the dedicated diagnostic workflow.
+        var driverUpdates = -1;
+        SystemOverview? system;
+        try { system = CollectSystemOverview(technologies); }
+        catch { system = CollectFallbackSystemOverview(technologies); }
+        IReadOnlyList<NetworkAdapterInfo> networkAdapters;
+        try { networkAdapters = CollectNetworkAdapters(); }
+        catch { networkAdapters = Array.Empty<NetworkAdapterInfo>(); }
         return new HardwareInventory(DateTimeOffset.Now, components, technologies, driverUpdates, system, networkAdapters);
+    }
+
+    private static SystemOverview CollectFallbackSystemOverview(IReadOnlyList<TechnologyStatus> technologies)
+    {
+        var uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
+        return new SystemOverview(
+            Environment.OSVersion.VersionString,
+            Environment.OSVersion.Version.ToString(),
+            Environment.OSVersion.Version.Build.ToString(),
+            Environment.Is64BitOperatingSystem ? "64 bits" : "32 bits",
+            Environment.MachineName,
+            Environment.UserName,
+            "Non disponible",
+            FormatUptime(uptime),
+            technologies.FirstOrDefault(item => item.Id == "secure-boot")?.State == TechnologyState.Enabled ? "UEFI · Secure Boot" : "UEFI / BIOS",
+            "Non disponible");
     }
 
     private static SystemOverview CollectSystemOverview(IReadOnlyList<TechnologyStatus> technologies)
@@ -177,6 +201,17 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
         };
     }
 
+    private static IReadOnlyList<TechnologyStatus> DefaultTechnologies(string detail) => new[]
+    {
+        new TechnologyStatus("secure-boot", "Démarrage sécurisé", TechnologyState.Unknown, detail, "Windows/UEFI"),
+        new TechnologyStatus("memory-integrity", "Intégrité de la mémoire (HVCI)", TechnologyState.Unknown, detail, "Device Guard"),
+        new TechnologyStatus("virtualization", "Virtualisation matérielle", TechnologyState.Unknown, detail, "Firmware"),
+        new TechnologyStatus("tpm", "TPM", TechnologyState.Unknown, detail, "Fournisseur TPM Windows"),
+        new TechnologyStatus("memory-profile", "Profil mémoire XMP/EXPO", TechnologyState.Unknown, detail, "SMBIOS"),
+        new TechnologyStatus("resizable-bar", "Resizable BAR / Smart Access Memory", TechnologyState.Unknown, detail, "Pilote graphique"),
+        new TechnologyStatus("above-4g", "Décodage Above 4G", TechnologyState.Unknown, detail, "Firmware")
+    };
+
     private static (TechnologyState State, string Detail) DetectMemoryProfile()
     {
         try
@@ -218,9 +253,13 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
         {
             using var searcher = new ManagementObjectSearcher(query);
             using var results = searcher.Get();
-            target.AddRange(results.Cast<ManagementObject>().Select(factory));
+            foreach (ManagementObject item in results)
+            {
+                try { target.Add(factory(item)); }
+                catch { /* A malformed WMI row must not blank the entire inventory. */ }
+            }
         }
-        catch (ManagementException) { }
+        catch { }
     }
 
     private static TechnologyStatus Technology(string id, string name, bool? enabled, string method) =>

@@ -1016,6 +1016,7 @@
 
                         <!-- DataGrid View -->
                         <controls:DataGrid x:Name="WindowsAppsDataGrid"
+                                           x:Load="{x:Bind ViewModel.IsTableView, Mode=OneWay}"
                                            Grid.Row="1"
                                            Visibility="{x:Bind ViewModel.IsTableView, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                            Loaded="WindowsAppsDataGrid_Loaded"
@@ -1165,6 +1166,7 @@
                              section headers, Select-all checkboxes, and the card grid
                              all share the same horizontal extents. -->
                         <ScrollViewer Grid.Row="1" x:Name="WindowsAppsCardScrollViewer"
+                                      x:Load="{x:Bind ViewModel.IsCardView, Mode=OneWay}"
                                       Visibility="{x:Bind ViewModel.IsCardView, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
@@ -1253,6 +1255,7 @@
 
                         <!-- Compact View for Windows Apps -->
                         <ScrollViewer x:Name="WindowsAppsCompactScrollViewer"
+                                      x:Load="{x:Bind ViewModel.IsCompactView, Mode=OneWay}"
                                       Grid.Row="1"
                                       Visibility="{x:Bind ViewModel.IsCompactView, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                       VerticalScrollBarVisibility="Auto"
@@ -1618,6 +1621,7 @@
 
                         <!-- DataGrid View -->
                         <controls:DataGrid x:Name="ExternalAppsDataGrid"
+                                           x:Load="{x:Bind ViewModel.IsTableView, Mode=OneWay}"
                                            Grid.Row="1"
                                            Visibility="{x:Bind ViewModel.IsTableView, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                            Loaded="ExternalAppsDataGrid_Loaded"
@@ -1741,6 +1745,7 @@
 
                         <!-- Card View for External Apps -->
                         <ScrollViewer Grid.Row="1" x:Name="ExternalAppsCardScrollViewer"
+                                      x:Load="{x:Bind ViewModel.IsCardView, Mode=OneWay}"
                                       Visibility="{x:Bind ViewModel.IsCardView, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
@@ -1794,6 +1799,7 @@
 
                         <!-- Compact View for External Apps -->
                         <ScrollViewer x:Name="ExternalAppsCompactScrollViewer"
+                                      x:Load="{x:Bind ViewModel.IsCompactView, Mode=OneWay}"
                                       Grid.Row="1"
                                       Visibility="{x:Bind ViewModel.IsCompactView, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                                       VerticalScrollBarVisibility="Auto"

@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="using:Synapse.Core.Features.ControlCenter.Models"
+    xmlns:controls="using:Synapse.UI.Features.Common.Controls"
     Background="Transparent">
 
     <Page.Resources>
@@ -78,11 +79,11 @@
         Background="Transparent"
         CompactPaneLength="0"
         IsBackButtonVisible="Collapsed"
-        IsPaneOpen="True"
+        IsPaneOpen="False"
         IsPaneToggleButtonVisible="False"
         IsSettingsVisible="False"
-        OpenPaneLength="264"
-        PaneDisplayMode="Left"
+        OpenPaneLength="0"
+        PaneDisplayMode="LeftMinimal"
         Loaded="CategoryNavigationView_Loaded"
         SelectionChanged="CategoryNavigationView_SelectionChanged">
 
@@ -163,7 +164,7 @@
             <InfoBar x:Name="OverviewInfo" IsOpen="False" IsClosable="True" Margin="0,0,0,12"/>
 
             <Grid Grid.Row="1">
-                <Grid x:Name="GameBoosterView">
+                <Grid x:Name="GameBoosterView" x:Load="False">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
@@ -201,16 +202,17 @@
                                                 <TextBlock Text="TES JEUX" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/>
                                                 <TextBlock Text="Bibliothèque détectée" Style="{StaticResource SectionTitleStyle}"/>
                                             </StackPanel>
-                                            <Button Content="Analyser" HorizontalAlignment="Right" VerticalAlignment="Center" Click="ScanGamesButton_Click"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                <Button Content="Ajouter un jeu" Click="AddManualGameButton_Click" ToolTipService.ToolTip="Choisir manuellement un fichier .exe, par exemple FiveM.exe."/>
+                                                <Button Content="Analyser" Click="ScanGamesButton_Click"/>
+                                            </StackPanel>
                                         </Grid>
                                         <ListView x:Name="GamesList" Grid.Row="1" MinHeight="430" SelectionMode="Single" SelectionChanged="GamesList_SelectionChanged">
                                             <ListView.ItemTemplate>
                                                 <DataTemplate x:DataType="models:DetectedGame">
                                                     <Grid Padding="12" ColumnSpacing="12">
                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                                        <Border Width="42" Height="42" CornerRadius="11" Background="{StaticResource SoftCyanBrush}">
-                                                            <FontIcon Glyph="&#xE7FC;" Foreground="{StaticResource SynapseCyanBrush}" FontSize="20"/>
-                                                        </Border>
+                                                        <controls:ExecutableIcon ExecutablePath="{x:Bind ExecutablePath}" Width="42" Height="42"/>
                                                         <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                                                             <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                                             <TextBlock Text="{x:Bind Launcher}" Opacity="0.58" FontSize="12"/>
@@ -228,9 +230,7 @@
                                     <Border Style="{StaticResource CardStyle}">
                                         <Grid ColumnSpacing="14">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <Border Width="54" Height="54" CornerRadius="14" Background="{StaticResource SoftCyanBrush}">
-                                                <FontIcon Glyph="&#xE7FC;" Foreground="{StaticResource SynapseCyanBrush}" FontSize="25"/>
-                                            </Border>
+                                            <controls:ExecutableIcon x:Name="SelectedGameIcon" Width="54" Height="54"/>
                                             <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                                                 <TextBlock x:Name="SelectedGameNameText" Text="Sélectionne un jeu" FontSize="24" FontWeight="SemiBold"/>
                                                 <TextBlock x:Name="SelectedGamePathText" Text="Le profil s’active automatiquement au lancement du processus détecté." Style="{StaticResource MutedTextStyle}"/>
@@ -276,7 +276,7 @@
                                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                                 <Border Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameHighPriorityToggle" IsOn="True" Header="Priorité CPU élevée" OffContent="Désactivée" OnContent="Active"/></Border>
                                                 <Border Grid.Column="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GamePowerPlanToggle" Header="Plan hautes performances" OffContent="Désactivé" OnContent="Actif"/></Border>
-                                                <Border Grid.Row="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameTimerToggle" IsOn="True" Header="Timer basse latence" OffContent="Désactivé" OnContent="Actif"/></Border>
+                                                <Border Grid.Row="1" Style="{StaticResource ActionRowStyle}"><StackPanel Spacing="4"><ToggleSwitch x:Name="GameTimerToggle" IsOn="True" Header="Timer basse latence (0,5 ms)" OffContent="Désactivé" OnContent="Actif"/><TextBlock Text="Augmente la fréquence du minuteur Windows pendant le jeu afin de réduire certaines attentes. Peut légèrement augmenter la consommation CPU et batterie." FontSize="11" Opacity="0.58" TextWrapping="Wrap"/></StackPanel></Border>
                                                 <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionRowStyle}"><ToggleSwitch x:Name="GameKeepAwakeToggle" IsOn="True" Header="Empêcher la mise en veille" OffContent="Non" OnContent="Oui"/></Border>
                                             </Grid>
                                         </StackPanel>
@@ -299,8 +299,8 @@
                                                     <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE945;" Foreground="{StaticResource SynapseCyanBrush}"/></Border>
                                                     <StackPanel><TextBlock Text="Optimisations système" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="Réglages avancés indépendants du profil" FontSize="12" Opacity="0.55"/></StackPanel>
                                                 </StackPanel>
-                                                <ToggleSwitch x:Name="LowLatencyToggle" Header="Précision du timer à 0,5 ms" OffContent="Désactivée" OnContent="Active" Toggled="LowLatencyToggle_Toggled"/>
-                                                <ToggleSwitch x:Name="TelemetryToggle" Header="Bouclier anti-télémétrie" OffContent="Désactivé" OnContent="Actif" Toggled="TelemetryToggle_Toggled"/>
+                                                <StackPanel Spacing="3"><ToggleSwitch x:Name="LowLatencyToggle" Header="Précision du timer à 0,5 ms" OffContent="Désactivée" OnContent="Active" Toggled="LowLatencyToggle_Toggled"/><TextBlock Text="Réduit l’intervalle de planification Windows. À activer seulement pour les jeux sensibles à la latence ; Synapse restaure la valeur ensuite." FontSize="11" Opacity="0.58" TextWrapping="Wrap"/></StackPanel>
+                                                <StackPanel Spacing="3"><ToggleSwitch x:Name="TelemetryToggle" Header="Bouclier anti-télémétrie" OffContent="Désactivé" OnContent="Actif" Toggled="TelemetryToggle_Toggled"/><TextBlock Text="Limite des tâches de diagnostic Windows non essentielles. Un point de restauration est créé avant modification." FontSize="11" Opacity="0.58" TextWrapping="Wrap"/></StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </Grid>
@@ -325,7 +325,7 @@
                     </ScrollViewer>
                 </Grid>
 
-                <Grid x:Name="HardwareView" Visibility="Collapsed">
+                <Grid x:Name="HardwareView" x:Load="False" Visibility="Collapsed">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
@@ -476,7 +476,7 @@
                     </ScrollViewer>
                 </Grid>
 
-                <Grid x:Name="DeepCleanupView" Visibility="Collapsed">
+                <Grid x:Name="DeepCleanupView" x:Load="False" Visibility="Collapsed">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
@@ -506,7 +506,7 @@
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{StaticResource CardStyle}">
-                                        <StackPanel Spacing="12"><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="38" Height="38" CornerRadius="10" Background="{StaticResource SoftRedBrush}"><FontIcon Glyph="&#xE74D;" Foreground="{StaticResource SynapseRedBrush}"/></Border><StackPanel><TextBlock Text="Désinstallation profonde" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="Programme et résidus validés" FontSize="12" Opacity="0.55"/></StackPanel></StackPanel><ComboBox x:Name="AppsPicker" DisplayMemberPath="Name" PlaceholderText="Choisir une application" HorizontalAlignment="Stretch"/><StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Analyser les résidus" Click="AnalyzeUninstallButton_Click"/><Button Content="Désinstaller proprement" Click="ExecuteUninstallButton_Click"/></StackPanel><TextBlock x:Name="UninstallStatusText" Text="Sélectionne une application pour rechercher ses résidus." TextWrapping="Wrap" Opacity="0.62"/></StackPanel>
+                                        <StackPanel Spacing="12"><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="38" Height="38" CornerRadius="10" Background="{StaticResource SoftRedBrush}"><FontIcon Glyph="&#xE74D;" Foreground="{StaticResource SynapseRedBrush}"/></Border><StackPanel><TextBlock Text="Désinstallation profonde" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="Programme, importance et résidus validés" FontSize="12" Opacity="0.55"/></StackPanel></StackPanel><ComboBox x:Name="AppsPicker" PlaceholderText="Choisir une application" HorizontalAlignment="Stretch" SelectionChanged="AppsPicker_SelectionChanged"><ComboBox.ItemTemplate><DataTemplate x:DataType="models:InstalledApplication"><Grid MinWidth="420" Padding="4" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><controls:ExecutableIcon ExecutablePath="{x:Bind IconPath}" Width="32" Height="32"/><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Publisher}" FontSize="11" Opacity="0.55"/></StackPanel><Border Grid.Column="2" Padding="8,3" CornerRadius="10" Background="{StaticResource SoftAmberBrush}" VerticalAlignment="Center"><TextBlock Text="{x:Bind Importance}" FontSize="11"/></Border></Grid></DataTemplate></ComboBox.ItemTemplate></ComboBox><TextBlock x:Name="SelectedAppImportanceText" Text="L’importance et l’impact seront affichés après sélection." FontSize="11" Opacity="0.58" TextWrapping="Wrap"/><StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Analyser les résidus" Click="AnalyzeUninstallButton_Click"/><Button Content="Désinstaller proprement" Click="ExecuteUninstallButton_Click"/></StackPanel><TextBlock x:Name="UninstallStatusText" Text="Sélectionne une application pour rechercher ses résidus." TextWrapping="Wrap" Opacity="0.62"/></StackPanel>
                                     </Border>
                                 </StackPanel>
                             </Grid>
@@ -514,7 +514,7 @@
                     </ScrollViewer>
                 </Grid>
 
-                <Grid x:Name="SystemHealthView" Visibility="Collapsed">
+                <Grid x:Name="SystemHealthView" x:Load="False" Visibility="Collapsed">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
@@ -539,7 +539,7 @@
                     </ScrollViewer>
                 </Grid>
 
-                <Grid x:Name="TaskManagerView" Visibility="Collapsed">
+                <Grid x:Name="TaskManagerView" x:Load="False" Visibility="Collapsed">
                     <StackPanel Spacing="14">
                         <Border Style="{StaticResource HeroCardStyle}" Padding="0">
                             <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#292D405E" Offset="0"/><GradientStop Color="#161C222B" Offset="0.55"/><GradientStop Color="#1635C7F4" Offset="1"/></LinearGradientBrush></Border.Background>
@@ -548,13 +548,13 @@
 
                         <TabView x:Name="TaskManagerTabView" IsAddTabButtonVisible="False">
                             <TabViewItem Header="Processus">
-                                <Grid Padding="0,12,4,4"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid Margin="0,0,0,10"><StackPanel><TextBlock Text="PROCESSUS ACTIFS" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock x:Name="ProcessCountText" Text="Chargement…" Style="{StaticResource SectionTitleStyle}"/></StackPanel></Grid><Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="0"><ListView x:Name="TaskProcessesList" SelectionMode="Single"><ListView.ItemTemplate><DataTemplate x:DataType="models:TaskProcessInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="120"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE9D9;" Foreground="{StaticResource SynapseCyanBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Description}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Id}" VerticalAlignment="Center" Opacity="0.65"/><TextBlock Grid.Column="3" Text="{x:Bind MemoryDisplay}" VerticalAlignment="Center"/><TextBlock Grid.Column="4" Text="{x:Bind Status}" VerticalAlignment="Center"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border><Grid Grid.Row="2" Margin="0,10,0,0"><TextBlock x:Name="TaskManagerStatusText" Text="Sélectionne un processus pour afficher les actions disponibles." VerticalAlignment="Center" Opacity="0.6"/><Button Content="Terminer la tâche" HorizontalAlignment="Right" Click="EndTaskButton_Click"/></Grid></Grid>
+                                <Grid Padding="0,12,4,4"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid Margin="0,0,0,10"><StackPanel><TextBlock Text="PROCESSUS ACTIFS" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock x:Name="ProcessCountText" Text="Chargement…" Style="{StaticResource SectionTitleStyle}"/></StackPanel></Grid><Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="0"><ListView x:Name="TaskProcessesList" SelectionMode="Single"><ListView.ItemTemplate><DataTemplate x:DataType="models:TaskProcessInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="120"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions><controls:ExecutableIcon ExecutablePath="{x:Bind ExecutablePath}" Width="40" Height="40"/><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Description}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Id}" VerticalAlignment="Center" Opacity="0.65"/><TextBlock Grid.Column="3" Text="{x:Bind MemoryDisplay}" VerticalAlignment="Center"/><TextBlock Grid.Column="4" Text="{x:Bind Status}" VerticalAlignment="Center"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border><Grid Grid.Row="2" Margin="0,10,0,0"><TextBlock x:Name="TaskManagerStatusText" Text="Sélectionne un processus pour afficher les actions disponibles." VerticalAlignment="Center" Opacity="0.6"/><Button Content="Terminer la tâche" HorizontalAlignment="Right" Click="EndTaskButton_Click"/></Grid></Grid>
                             </TabViewItem>
                             <TabViewItem Header="Applications">
-                                <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="TaskApplicationsList" SelectionMode="Single"><ListView.ItemTemplate><DataTemplate x:DataType="models:InstalledApplication"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftAmberBrush}"><FontIcon Glyph="&#xE71D;" Foreground="{StaticResource SynapseAmberBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Publisher}" FontSize="11" Opacity="0.5"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Version}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="Installée" VerticalAlignment="Center" Foreground="{StaticResource SynapseGreenBrush}"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
+                                <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="TaskApplicationsList" SelectionMode="Single"><ListView.ItemTemplate><DataTemplate x:DataType="models:InstalledApplication"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions><controls:ExecutableIcon ExecutablePath="{x:Bind IconPath}" Width="40" Height="40"/><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Publisher}" FontSize="11" Opacity="0.5"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Version}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="{x:Bind Importance}" VerticalAlignment="Center" Foreground="{StaticResource SynapseGreenBrush}"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
                             </TabViewItem>
                             <TabViewItem Header="Démarrage">
-                                <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="StartupItemsList" SelectionMode="None"><ListView.ItemTemplate><DataTemplate x:DataType="models:StartupItemInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="130"/><ColumnDefinition Width="120"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftGreenBrush}"><FontIcon Glyph="&#xE768;" Foreground="{StaticResource SynapseGreenBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Command}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Source}" VerticalAlignment="Center"/><Border Grid.Column="3" CornerRadius="11" Padding="8,4" Background="{StaticResource SoftAmberBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"><TextBlock Text="{x:Bind Impact}" FontSize="11"/></Border><ToggleSwitch Grid.Column="4" IsOn="{x:Bind IsEnabled}" IsHitTestVisible="False" VerticalAlignment="Center"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
+                                <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="StartupItemsList" SelectionMode="None"><ListView.ItemTemplate><DataTemplate x:DataType="models:StartupItemInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="130"/><ColumnDefinition Width="120"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><controls:ExecutableIcon ExecutablePath="{x:Bind ExecutablePath}" Width="40" Height="40"/><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Command}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Source}" VerticalAlignment="Center"/><Border Grid.Column="3" CornerRadius="11" Padding="8,4" Background="{StaticResource SoftAmberBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"><TextBlock Text="{x:Bind Impact}" FontSize="11"/></Border><ToggleSwitch Grid.Column="4" IsOn="{x:Bind IsEnabled}" IsEnabled="{x:Bind CanConfigure}" Tag="{x:Bind}" Toggled="StartupItemToggle_Toggled" VerticalAlignment="Center"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
                             </TabViewItem>
                             <TabViewItem Header="Services">
                                 <Border Style="{StaticResource CardStyle}" Padding="0" Margin="0,12,4,4"><ListView x:Name="WindowsServicesList" SelectionMode="None"><ListView.ItemTemplate><DataTemplate x:DataType="models:WindowsServiceInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="120"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource SoftCyanBrush}"><FontIcon Glyph="&#xE713;" Foreground="{StaticResource SynapseCyanBrush}"/></Border><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Description}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind ProcessId}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="{x:Bind StartMode}" VerticalAlignment="Center"/><TextBlock Grid.Column="4" Text="{x:Bind State}" VerticalAlignment="Center" Foreground="{StaticResource SynapseGreenBrush}"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border>
