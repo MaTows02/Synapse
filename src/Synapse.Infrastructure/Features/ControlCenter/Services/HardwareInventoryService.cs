@@ -23,7 +23,7 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
     {
         var components = new List<HardwareComponent>();
         AddComponents(components, "Processeur", "SELECT Name, Manufacturer, ProcessorId, MaxClockSpeed, NumberOfCores, NumberOfLogicalProcessors FROM Win32_Processor", item =>
-            Component("Processeur", item, item["Name"], item["Manufacturer"], item["ProcessorId"], "", "Détecté",
+            Component("Processeur", item, item["Name"], item["Manufacturer"], item["ProcessorId"], "", "", "Détecté",
                 ("Fréquence max", $"{item["MaxClockSpeed"]} MHz"), ("Cœurs", item["NumberOfCores"]), ("Threads", item["NumberOfLogicalProcessors"])));
         AddComponents(components, "Carte graphique", "SELECT Name, AdapterCompatibility, DriverVersion, AdapterRAM, VideoProcessor, CurrentHorizontalResolution, CurrentVerticalResolution FROM Win32_VideoController", item =>
             Component("Carte graphique", item, item["Name"], item["AdapterCompatibility"], item["VideoProcessor"], "", item["DriverVersion"], "Détecté",
