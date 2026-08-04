@@ -70,7 +70,7 @@ public partial class AppItemViewModel : ObservableObject, ISelectable, IDisposab
 
     public string Name => Definition.Name;
 
-    public string Description => _localizationService.CurrentLanguage.StartsWith("fr", StringComparison.OrdinalIgnoreCase)
+    public string Description => _localizationService.CurrentLanguage?.StartsWith("fr", StringComparison.OrdinalIgnoreCase) == true
         ? FrenchAppDescriptionTranslator.Translate(Definition.Description, Definition.GroupName ?? string.Empty)
         : Definition.Description;
     public string GroupName => Definition.GroupName ?? string.Empty;
