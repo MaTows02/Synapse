@@ -23,7 +23,7 @@ public class AppRemovalScriptSectionTests
 
         var output = sb.ToString();
         output.Should().Contain("$scriptsDir");
-        output.Should().Contain("C:\\ProgramData\\\\Scripts");
+        output.Should().Contain(@"C:\ProgramData\Synapse\Scripts");
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class AppRemovalScriptSectionTests
 
         var output = sb.ToString();
         output.Should().Contain("Register-ScheduledTask");
-        output.Should().Contain("");
+        output.Should().Contain("New-ScheduledTaskAction");
     }
 
     // ---------------------------------------------------------------

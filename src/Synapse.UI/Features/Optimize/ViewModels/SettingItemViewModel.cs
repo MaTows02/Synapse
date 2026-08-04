@@ -2344,9 +2344,12 @@ public partial class SettingItemViewModel : BaseViewModel
         bool hasTaskData = SettingDefinition.ScheduledTaskSettings.Any(t =>
             t.RecommendedState.HasValue || t.DefaultState.HasValue);
 
-        // Check PowerCfgSettings for RecommendedValueAC or DefaultValueAC
+        // Check both sides of PowerCfgSettings. Some valid settings only declare
+        // battery (DC) recommendation/default data, so AC-only checks would hide
+        // their badges entirely.
         bool hasPowerCfgData = SettingDefinition.PowerCfgSettings?.Any(p =>
-            p.RecommendedValueAC.HasValue || p.DefaultValueAC.HasValue) == true;
+            p.RecommendedValueAC.HasValue || p.RecommendedValueDC.HasValue
+            || p.DefaultValueAC.HasValue || p.DefaultValueDC.HasValue) == true;
 
         HasBadgeData = hasRegistryData || hasSelectionOptionData || hasTaskData || hasPowerCfgData;
     }

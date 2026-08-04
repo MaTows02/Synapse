@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation du Centre de contrôle
+    url: https://github.com/MaTows02/Synapse/blob/main/docs/CONTROL_CENTER.md
+    about: Comprendre le tableau de bord, le Game Booster et la compatibilité matérielle.

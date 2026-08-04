@@ -27,7 +27,7 @@ public sealed partial class WindowsAppsHelpContent : UserControl
         HelpContentText.Text = localizationService.GetString("Help_WindowsApps_Content");
 
         LearnMoreLink.Content = localizationService.GetString("Help_LearnMore_WindowsApps");
-        LearnMoreLink.NavigateUri = new System.Uri("https://github.com/Matows/Synapse#logiciels-et-réglages-windows");
+        LearnMoreLink.NavigateUri = new System.Uri("https://github.com/MaTows02/Synapse#optimisations-windows");
     }
 
     private void RemovalButton_Loaded(object sender, RoutedEventArgs e)

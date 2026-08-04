@@ -11,6 +11,19 @@ namespace Synapse.Infrastructure.Features.ControlCenter.Services;
 /// </summary>
 public sealed class DeviceControlService : IDeviceControlService
 {
+    private static readonly string[] CoolingKeywords =
+    [
+        "fan", "ventilateur", "pump", "pompe", "cooler", "cooling", "watercool", "liquid cooler",
+        "aio", "kraken", "hydro", "commander core", "commander pro", "smart device", "aquacomputer",
+        "octo", "quadro", "d5 next", "fan hub", "l-connect"
+    ];
+
+    private static readonly string[] RgbKeywords =
+    [
+        "rgb", "argb", "lighting node", "lighting controller", "chroma", "aura", "mystic light",
+        "rgb fusion", "polychrome", "openrgb", "signalrgb", "hue 2", "strimer"
+    ];
+
     private readonly string _profilePath = SynapseDataPaths.GetPath("device-profiles.json");
     private readonly IReadOnlyList<IDeviceControlAdapter> _adapters;
 
@@ -22,33 +35,159 @@ public sealed class DeviceControlService : IDeviceControlService
     {
         var devices = new List<DeviceControlCapability>();
         foreach (var adapter in _adapters)
-            devices.AddRange(await adapter.DiscoverAsync(cancellationToken).ConfigureAwait(false));
-
-        if (devices.Count == 0)
         {
-            await Task.Run(() =>
+            try
             {
-                try
-                {
-                    using var searcher = new ManagementObjectSearcher("SELECT DeviceID, Name, Manufacturer FROM Win32_Fan");
-                    using var results = searcher.Get();
-                    foreach (ManagementObject fan in results)
-                    {
-                        devices.Add(new DeviceControlCapability(
-                            fan["DeviceID"]?.ToString() ?? Guid.NewGuid().ToString("N"),
-                            fan["Name"]?.ToString() ?? "Ventilateur ACPI",
-                            fan["Manufacturer"]?.ToString() ?? "Firmware",
-                            false,
-                            false,
-                            "Windows ACPI",
-                            "Lecture seule — installez un adaptateur constructeur compatible"));
-                    }
-                }
-                catch (ManagementException) { }
-            }, cancellationToken).ConfigureAwait(false);
+                devices.AddRange(await adapter.DiscoverAsync(cancellationToken).ConfigureAwait(false));
+            }
+            catch
+            {
+                // One optional vendor adapter must not prevent the other providers from being scanned.
+            }
         }
 
+        devices.AddRange(await Task.Run(() => DiscoverWindowsDevices(cancellationToken), cancellationToken).ConfigureAwait(false));
+
+        return devices
+            .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.OrderByDescending(d => d.CanControlFan || d.CanControlRgb).First())
+            .OrderBy(x => x.Kind)
+            .ThenBy(x => x.Manufacturer)
+            .ThenBy(x => x.Name)
+            .ToList();
+    }
+
+    private static IReadOnlyList<DeviceControlCapability> DiscoverWindowsDevices(CancellationToken cancellationToken)
+    {
+        var devices = new List<DeviceControlCapability>();
+        DiscoverAcpiFans(devices, cancellationToken);
+        DiscoverHardwareMonitorSensors(devices, "root\\LibreHardwareMonitor", "LibreHardwareMonitor", cancellationToken);
+        DiscoverHardwareMonitorSensors(devices, "root\\OpenHardwareMonitor", "OpenHardwareMonitor", cancellationToken);
+        DiscoverPlugAndPlayControllers(devices, cancellationToken);
         return devices;
+    }
+
+    private static void DiscoverAcpiFans(List<DeviceControlCapability> devices, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher("SELECT DeviceID, Name, Manufacturer FROM Win32_Fan");
+            using var results = searcher.Get();
+            foreach (ManagementObject fan in results)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                devices.Add(new DeviceControlCapability(
+                    fan["DeviceID"]?.ToString() ?? $"acpi-fan:{devices.Count}",
+                    fan["Name"]?.ToString() ?? "Ventilateur ACPI",
+                    fan["Manufacturer"]?.ToString() ?? "Firmware",
+                    false,
+                    false,
+                    "Windows ACPI",
+                    "Détecté en lecture seule. Le firmware ne publie pas de commande de vitesse standardisée.",
+                    DeviceControlKind.Fan,
+                    "ACPI",
+                    "Win32_Fan"));
+            }
+        }
+        catch (ManagementException) { }
+    }
+
+    private static void DiscoverHardwareMonitorSensors(
+        List<DeviceControlCapability> devices,
+        string scope,
+        string provider,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(scope,
+                "SELECT Identifier, Name, SensorType, Value, Parent FROM Sensor");
+            using var results = searcher.Get();
+            foreach (ManagementObject sensor in results)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var sensorType = sensor["SensorType"]?.ToString() ?? string.Empty;
+                if (!sensorType.Equals("Fan", StringComparison.OrdinalIgnoreCase) &&
+                    !sensorType.Equals("Control", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var name = sensor["Name"]?.ToString() ?? "Capteur de refroidissement";
+                var value = sensor["Value"]?.ToString();
+                var unit = sensorType.Equals("Fan", StringComparison.OrdinalIgnoreCase) ? "tr/min" : "%";
+                devices.Add(new DeviceControlCapability(
+                    sensor["Identifier"]?.ToString() ?? $"{provider}:{devices.Count}",
+                    name,
+                    provider,
+                    false,
+                    false,
+                    provider,
+                    string.IsNullOrWhiteSpace(value)
+                        ? "Capteur détecté en lecture seule."
+                        : $"Valeur publiée : {value} {unit} · lecture seule.",
+                    DeviceControlKind.Fan,
+                    "Capteur logiciel",
+                    $"WMI {scope}"));
+            }
+        }
+        catch (ManagementException) { }
+    }
+
+    private static void DiscoverPlugAndPlayControllers(List<DeviceControlCapability> devices, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT DeviceID, Name, Manufacturer, PNPClass, Service FROM Win32_PnPEntity WHERE Name IS NOT NULL");
+            using var results = searcher.Get();
+            foreach (ManagementObject item in results)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var name = item["Name"]?.ToString() ?? string.Empty;
+                var manufacturer = item["Manufacturer"]?.ToString() ?? "Constructeur inconnu";
+                var searchable = $"{name} {manufacturer}";
+                var cooling = ContainsAny(searchable, CoolingKeywords);
+                var rgb = ContainsAny(searchable, RgbKeywords);
+                if (!cooling && !rgb) continue;
+
+                var id = item["DeviceID"]?.ToString() ?? $"pnp-controller:{devices.Count}";
+                var kind = Classify(name, cooling, rgb);
+                var connection = GetConnection(id, item["PNPClass"]?.ToString());
+                var capability = cooling && rgb ? "ventilation/pompe et éclairage" : cooling ? "refroidissement" : "éclairage";
+                devices.Add(new DeviceControlCapability(
+                    id,
+                    name,
+                    manufacturer,
+                    false,
+                    false,
+                    "Windows Plug & Play",
+                    $"Contrôleur {capability} détecté. Lecture seule tant qu’un adaptateur constructeur sûr n’est pas chargé.",
+                    kind,
+                    connection,
+                    $"Win32_PnPEntity · {item["Service"] ?? "pilote non publié"}"));
+            }
+        }
+        catch (ManagementException) { }
+    }
+
+    private static bool ContainsAny(string value, IEnumerable<string> keywords) =>
+        keywords.Any(keyword => value.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+
+    private static DeviceControlKind Classify(string name, bool cooling, bool rgb)
+    {
+        if (name.Contains("pump", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("pompe", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("d5", StringComparison.OrdinalIgnoreCase))
+            return DeviceControlKind.Pump;
+        if (cooling && rgb) return DeviceControlKind.CoolingController;
+        if (rgb) return DeviceControlKind.RgbController;
+        return DeviceControlKind.Fan;
+    }
+
+    private static string GetConnection(string deviceId, string? pnpClass)
+    {
+        if (deviceId.StartsWith("USB", StringComparison.OrdinalIgnoreCase)) return "USB";
+        if (deviceId.StartsWith("HID", StringComparison.OrdinalIgnoreCase)) return "HID";
+        if (deviceId.StartsWith("ACPI", StringComparison.OrdinalIgnoreCase)) return "ACPI";
+        return string.IsNullOrWhiteSpace(pnpClass) ? "Plug & Play" : pnpClass;
     }
 
     public Task<OperationResult> SetFanSpeedAsync(string deviceId, int percent, bool persist, CancellationToken cancellationToken = default) =>

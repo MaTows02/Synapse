@@ -1,0 +1,23 @@
+name: Proposer une amélioration
+description: Décrire une fonctionnalité ou une compatibilité matérielle souhaitée.
+title: "[Idée] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Besoin
+      description: Quel problème concret cette amélioration résout-elle ?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution proposée
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Matériel ou logiciel concerné
+      description: Pour un ventilateur, une pompe ou du RGB, indiquez le constructeur, le modèle et l’interface connue sans numéro de série.

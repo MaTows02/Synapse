@@ -179,6 +179,31 @@
     },
     "InputType": "Selection"
   },
+  "explorer-customization-desktop-icon-control-panel": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-desktop-icon-network": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-desktop-icon-recycle-bin": {
+    "Recommended": 0,
+    "Default": 0,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-desktop-icon-this-pc": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-desktop-icon-users-files": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
   "explorer-customization-disable-sync-provider-notifications": {
     "Recommended": 0,
     "Default": null,
@@ -208,8 +233,8 @@
     "InputType": "Toggle"
   },
   "explorer-customization-gallery": {
-    "Recommended": null,
-    "Default": null,
+    "Recommended": 0,
+    "Default": 0,
     "InputType": "Toggle"
   },
   "explorer-customization-hide-empty-drives": {
@@ -228,9 +253,20 @@
     "InputType": "Toggle"
   },
   "explorer-customization-home-folder": {
-    "Recommended": null,
-    "Default": null,
+    "Recommended": 0,
+    "Default": 0,
     "InputType": "Toggle"
+  },
+  "explorer-customization-icon-cache-size": {
+    "Recommended": {
+      "kind": "index",
+      "value": 0
+    },
+    "Default": {
+      "kind": "index",
+      "value": 0
+    },
+    "InputType": "Selection"
   },
   "explorer-customization-icon-thumbnails": {
     "Recommended": 1,
@@ -442,6 +478,71 @@
     "Default": 1,
     "InputType": "Toggle"
   },
+  "explorer-customization-thispc-folder-desktop": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-desktop-win10": {
+    "Recommended": null,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-documents": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-documents-win10": {
+    "Recommended": null,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-downloads": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-downloads-win10": {
+    "Recommended": null,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-music": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-music-win10": {
+    "Recommended": null,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-pictures": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-pictures-win10": {
+    "Recommended": null,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-videos": {
+    "Recommended": 1,
+    "Default": 1,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thispc-folder-videos-win10": {
+    "Recommended": null,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "explorer-customization-thumbnail-cache-cleanup": {
+    "Recommended": 3,
+    "Default": 3,
+    "InputType": "Toggle"
+  },
   "explorer-customization-typing-behavior": {
     "Recommended": {
       "kind": "index",
@@ -561,6 +662,11 @@
   "gaming-directx-vrr-optimizations": {
     "Recommended": "0",
     "Default": "1",
+    "InputType": "Toggle"
+  },
+  "gaming-disable-all-overlays": {
+    "Recommended": 1,
+    "Default": null,
     "InputType": "Toggle"
   },
   "gaming-disable-mpo": {
@@ -1072,6 +1178,17 @@
     "Default": {
       "kind": "index",
       "value": 2
+    },
+    "InputType": "Selection"
+  },
+  "gaming-telephony-service": {
+    "Recommended": {
+      "kind": "index",
+      "value": 1
+    },
+    "Default": {
+      "kind": "index",
+      "value": 1
     },
     "InputType": "Selection"
   },
@@ -1943,6 +2060,17 @@
     "Default": 1,
     "InputType": "Toggle"
   },
+  "start-all-apps-view": {
+    "Recommended": {
+      "kind": "index",
+      "value": 2
+    },
+    "Default": {
+      "kind": "index",
+      "value": 0
+    },
+    "InputType": "Selection"
+  },
   "start-disable-bing-search-results": {
     "Recommended": 1,
     "Default": null,
@@ -1954,7 +2082,7 @@
     "InputType": "Action"
   },
   "start-menu-clean-11": {
-    "Recommended": null,
+    "Recommended": "{\u0022pinnedList\u0022:[]}",
     "Default": null,
     "InputType": "Action"
   },
@@ -2039,6 +2167,11 @@
     "Recommended": null,
     "Default": null,
     "InputType": "Selection"
+  },
+  "system-restore-protection": {
+    "Recommended": 1,
+    "Default": null,
+    "InputType": "Toggle"
   },
   "taskbar-alignment": {
     "Recommended": {

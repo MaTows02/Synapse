@@ -130,6 +130,7 @@ public static class InfrastructureServicesExtensions
         services.AddSingleton<IDeviceControlService, DeviceControlService>();
         services.AddSingleton<IGameDiscoveryService, GameDiscoveryService>();
         services.AddSingleton<IGameBoosterService, GameBoosterService>();
+        services.AddSingleton<IGameTuningService, GameTuningService>();
         services.AddSingleton<IDeepCleanerService, DeepCleanerService>();
         services.AddSingleton<IDeepUninstallService, DeepUninstallService>();
         services.AddSingleton<ISystemDiagnosticsService, SystemDiagnosticsService>();

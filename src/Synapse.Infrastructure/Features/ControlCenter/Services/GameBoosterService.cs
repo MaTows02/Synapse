@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
 
@@ -102,6 +103,9 @@ public sealed class GameBoosterService : IGameBoosterService
         if (profile.RequestLowLatencyTimer && NtSetTimerResolution(5_000, true, out var actual) == 0)
             granted = actual;
 
+        var previousPowerScheme = profile.UseHighPerformancePowerPlan ? TryEnableHighPerformancePowerPlan() : null;
+        var awakeLease = profile.KeepComputerAwake ? new AwakeLease() : null;
+
         Process? game = null;
         try
         {
@@ -130,11 +134,13 @@ public sealed class GameBoosterService : IGameBoosterService
                 catch { }
             }
             if (granted.HasValue) NtSetTimerResolution(5_000, false, out _);
+            RestorePowerPlan(previousPowerScheme);
+            awakeLease?.Dispose();
             return;
         }
 
         var session = new BoosterSession(profile.GameId, DateTimeOffset.Now, suspended, granted);
-        _sessions[profile.GameId] = new ActiveBoosterSession(session, game);
+        _sessions[profile.GameId] = new ActiveBoosterSession(session, game, previousPowerScheme, awakeLease);
         SessionStarted?.Invoke(this, session);
         if (game?.HasExited == true)
             await DeactivateAsync(profile.GameId).ConfigureAwait(false);
@@ -155,6 +161,8 @@ public sealed class GameBoosterService : IGameBoosterService
         }
         if (active.Session.GrantedTimerResolution100Ns.HasValue)
             NtSetTimerResolution(5_000, false, out _);
+        RestorePowerPlan(active.PreviousPowerScheme);
+        active.AwakeLease?.Dispose();
         active.GameProcess?.Dispose();
         SessionEnded?.Invoke(this, gameId);
         return Task.CompletedTask;
@@ -176,5 +184,81 @@ public sealed class GameBoosterService : IGameBoosterService
     [DllImport("ntdll.dll")]
     private static extern int NtSetTimerResolution(uint desiredResolution, [MarshalAs(UnmanagedType.Bool)] bool setResolution, out uint currentResolution);
 
-    private sealed record ActiveBoosterSession(BoosterSession Session, Process? GameProcess);
+    [DllImport("kernel32.dll")]
+    private static extern ExecutionState SetThreadExecutionState(ExecutionState executionState);
+
+    private static string? TryEnableHighPerformancePowerPlan()
+    {
+        try
+        {
+            var previous = RunPowerCfg("/getactivescheme");
+            var match = Regex.Match(previous, "[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}");
+            if (!match.Success) return null;
+            RunPowerCfg("/setactive SCHEME_MIN");
+            return match.Value;
+        }
+        catch { return null; }
+    }
+
+    private static void RestorePowerPlan(string? scheme)
+    {
+        if (string.IsNullOrWhiteSpace(scheme)) return;
+        try { RunPowerCfg($"/setactive {scheme}"); }
+        catch { }
+    }
+
+    private static string RunPowerCfg(string arguments)
+    {
+        using var process = Process.Start(new ProcessStartInfo("powercfg.exe", arguments)
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        }) ?? throw new InvalidOperationException("powercfg.exe n’a pas pu être lancé.");
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit(5_000);
+        if (!process.HasExited || process.ExitCode != 0)
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(error) ? "powercfg.exe a refusé la commande." : error);
+        return output;
+    }
+
+    [Flags]
+    private enum ExecutionState : uint
+    {
+        Continuous = 0x80000000,
+        SystemRequired = 0x00000001,
+        DisplayRequired = 0x00000002
+    }
+
+    private sealed class AwakeLease : IDisposable
+    {
+        private readonly CancellationTokenSource _stop = new();
+        private readonly Task _worker;
+
+        public AwakeLease()
+        {
+            _worker = Task.Factory.StartNew(() =>
+            {
+                SetThreadExecutionState(ExecutionState.Continuous | ExecutionState.SystemRequired | ExecutionState.DisplayRequired);
+                _stop.Token.WaitHandle.WaitOne();
+                SetThreadExecutionState(ExecutionState.Continuous);
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+
+        public void Dispose()
+        {
+            _stop.Cancel();
+            try { _worker.Wait(1_000); }
+            catch { }
+            _stop.Dispose();
+        }
+    }
+
+    private sealed record ActiveBoosterSession(
+        BoosterSession Session,
+        Process? GameProcess,
+        string? PreviousPowerScheme,
+        AwakeLease? AwakeLease);
 }

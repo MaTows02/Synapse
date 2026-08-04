@@ -20,7 +20,7 @@ namespace Synapse.UI.Features.Common.Dialogs;
 /// </summary>
 internal class SponsorsDialogBuilder
 {
-    private const string SupportUrl = "https://github.com/Matows/Synapse";
+    private const string SupportUrl = "https://github.com/MaTows02/Synapse/blob/main/SUPPORT.md";
 
     // Sponsor cards layout. The grid is locked to exactly CardColumns columns
     // that fill the usable content width, so cards never leave dead space on the

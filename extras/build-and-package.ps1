@@ -386,9 +386,14 @@ Write-Host "Using MSBuild: $msbuildPath" -ForegroundColor Green
 
 # Step 0: Update bundled WinGet CLI and VC++ Runtime DLLs
 Write-Host "Updating bundled WinGet and VC++ Runtime DLLs..." -ForegroundColor Green
-& "$scriptRoot\Update-BundledWinGet.ps1"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to update bundled WinGet" -ForegroundColor Red
+try {
+    & "$scriptRoot\Update-BundledWinGet.ps1" -ErrorAction Stop
+    if (-not $?) {
+        throw "Update-BundledWinGet.ps1 reported a failure."
+    }
+}
+catch {
+    Write-Host "Failed to update bundled WinGet: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 
@@ -477,15 +482,17 @@ Set-Content -Path $tempInnoScript -Value $innoContent
 
 # Step 6: Run the InnoSetup compiler
 Write-Host "Creating installer..." -ForegroundColor Green
-$innoCompiler = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-if (-not (Test-Path $innoCompiler)) {
-    Write-Host "InnoSetup compiler not found at $innoCompiler" -ForegroundColor Yellow
-    $innoCompiler = "C:\Program Files\Inno Setup 6\ISCC.exe"
-    if (-not (Test-Path $innoCompiler)) {
-        Write-Host "InnoSetup compiler not found. Please install Inno Setup 6 or update the script with the correct path." -ForegroundColor Red
-        exit 1
-    }
+$innoCandidates = @(
+    "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+    "C:\Program Files\Inno Setup 6\ISCC.exe",
+    "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+)
+$innoCompiler = $innoCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $innoCompiler) {
+    Write-Host "InnoSetup compiler not found. Install Inno Setup 6 with Winget (machine or current-user scope)." -ForegroundColor Red
+    exit 1
 }
+Write-Host "Using Inno Setup: $innoCompiler" -ForegroundColor Green
 
 if ($shouldSign -and $certificate) {
     # Create a temporary batch file for the sign tool command

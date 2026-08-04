@@ -164,8 +164,9 @@ public class ChangeHistoryServiceTests
     {
         var path = _service.GetFilePath();
 
+        path.Should().StartWith(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData));
+        path.Should().Contain(Path.Combine("Synapse", "ChangeHistory.txt"));
         path.Should().EndWith("ChangeHistory.txt");
-        path.Should().Contain("");
     }
 
     [Fact]

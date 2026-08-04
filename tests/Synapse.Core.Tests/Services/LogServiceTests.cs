@@ -27,8 +27,7 @@ public class LogServiceTests
 
         var path = service.GetLogPath();
 
-        path.Should().Contain("");
-        path.Should().Contain("Logs");
+        Path.GetFileName(Path.GetDirectoryName(path)!).Should().Be("Logs");
         path.Should().EndWith(".log");
     }
 

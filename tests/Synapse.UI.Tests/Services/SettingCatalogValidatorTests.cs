@@ -125,7 +125,7 @@ public class SettingCatalogValidatorTests
 
     [Theory]
     [MemberData(nameof(AllSettings))]
-    public void Selection_RegistrySettings_RecommendedAndDefaultValue_MustBeNull(string id, SettingDefinition s)
+    public void Selection_RegistrySettings_UseOptionMappingsForRecommendedAndDefaultState(string id, SettingDefinition s)
     {
         if (s.InputType != InputType.Selection || s.RegistrySettings is null) return;
         // PowerCfg-backed Selection: their state source is PowerCfgSetting, not RegistrySetting.
@@ -135,8 +135,21 @@ public class SettingCatalogValidatorTests
         {
             reg.RecommendedValue.Should().BeNull(
                 $"{id} is Selection - {reg.ValueName ?? "(key-level)"} RecommendedValue must be null (resolved via ComboBoxOption.ValueMappings)");
-            reg.DefaultValue.Should().BeNull(
-                $"{id} is Selection - {reg.ValueName ?? "(key-level)"} DefaultValue must be null (resolved via ComboBoxOption.ValueMappings)");
+
+            // A registry DefaultValue may intentionally model the value Windows
+            // supplies when the registry entry is absent. When present, it must
+            // agree with the option explicitly marked as the default.
+            if (reg.DefaultValue is not null)
+            {
+                var defaultOption = s.ComboBox?.Options?.SingleOrDefault(o => o.IsDefault);
+                defaultOption.Should().NotBeNull(
+                    $"{id} declares a registry fallback and must have exactly one default option");
+                reg.ValueName.Should().NotBeNull(
+                    $"{id} registry fallback must identify the mapped value name");
+                defaultOption!.ValueMappings.Should().ContainKey(reg.ValueName!);
+                defaultOption.ValueMappings![reg.ValueName!].Should().Be(reg.DefaultValue,
+                    $"{id} registry fallback must match the default option mapping");
+            }
         }
     }
 

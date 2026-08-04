@@ -112,10 +112,10 @@ public class PowerService(
         try
         {
             var systemPlans = await powerSettingsQueryService.GetAvailablePowerPlansAsync().ConfigureAwait(false);
-            var Guid = "57696e68-616e-6365-506f-776572000000";
+            var synapsePlanGuid = "57696e68-616e-6365-506f-776572000000";
 
             var matchingPlan = systemPlans.FirstOrDefault(p =>
-                string.Equals(p.Guid, Guid, StringComparison.OrdinalIgnoreCase));
+                string.Equals(p.Guid, synapsePlanGuid, StringComparison.OrdinalIgnoreCase));
 
             if (matchingPlan != null &&
                 !string.Equals(matchingPlan.Name?.Trim(), "Synapse Power Plan", StringComparison.OrdinalIgnoreCase))
@@ -125,7 +125,7 @@ public class PowerService(
                 // If the ghost is active, switch to Balanced first
                 if (matchingPlan.IsActive)
                 {
-                    var balancedGuid = Guid.Parse("381b4222-f694-41f0-9685-ff5bb260df2e");
+                    var balancedGuid = System.Guid.Parse("381b4222-f694-41f0-9685-ff5bb260df2e");
                     var activateResult = powerSchemeOperations.SetActiveScheme(balancedGuid);
                     if (activateResult == PowerProf.ERROR_SUCCESS)
                     {
@@ -133,7 +133,7 @@ public class PowerService(
                     }
                 }
 
-                var deleteResult = powerSchemeOperations.DeleteScheme(Guid.Parse(Guid));
+                var deleteResult = powerSchemeOperations.DeleteScheme(System.Guid.Parse(synapsePlanGuid));
                 if (deleteResult == PowerProf.ERROR_SUCCESS)
                 {
                     logService.Log(LogLevel.Info, "[PowerService] Successfully deleted corrupt  plan");
@@ -778,8 +778,8 @@ public class PowerService(
 
             // Clean up any ghost/corrupt plan entry (visible or invisible to enumeration)
             // that may block duplication with this GUID
-            var Guid = Guid.Parse(predefinedPlan.Guid);
-            var cleanupResult = powerSchemeOperations.DeleteScheme(Guid);
+            var planGuid = System.Guid.Parse(predefinedPlan.Guid);
+            var cleanupResult = powerSchemeOperations.DeleteScheme(planGuid);
             if (cleanupResult == PowerProf.ERROR_SUCCESS)
             {
                 logService.Log(LogLevel.Info, existingPlan != null

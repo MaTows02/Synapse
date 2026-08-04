@@ -60,7 +60,7 @@ public class SettingStateSnapshotTests
                 "Commit the baseline, then re-run the test and it must pass.");
         }
 
-        var expected = File.ReadAllText(FixturePath);
+        var expected = File.ReadAllText(FixturePath).TrimEnd('\r', '\n');
         json.Should().Be(expected, because: "Phase A must not change ANY setting's resolved Recommended/Default state.");
     }
 

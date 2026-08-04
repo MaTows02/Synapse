@@ -167,20 +167,19 @@ public class EventBusTests
     }
 
     [Fact]
-    public void SubscribeAsync_PublishInvokesAsyncHandler()
+    public async Task SubscribeAsync_PublishInvokesAsyncHandler()
     {
-        var received = false;
+        var handlerCompleted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         _eventBus.SubscribeAsync<SettingAppliedEvent>(async e =>
         {
             await Task.Delay(1);
-            received = true;
+            handlerCompleted.SetResult();
         });
 
         _eventBus.Publish(new SettingAppliedEvent("id", true));
 
-        // Give async handler time to complete
-        Thread.Sleep(100);
-        received.Should().BeTrue();
+        await handlerCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5));
     }
 
     [Fact]

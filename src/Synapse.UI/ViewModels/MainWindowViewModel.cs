@@ -517,7 +517,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             await Windows.System.Launcher.LaunchUriAsync(
-                new Uri("https://github.com/Matows/Synapse/issues"));
+                new Uri("https://github.com/MaTows02/Synapse/issues/new/choose"));
         }
         catch (Exception ex)
         {
@@ -534,7 +534,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         try
         {
             await Windows.System.Launcher.LaunchUriAsync(
-                new Uri("https://github.com/Matows/Synapse#readme"));
+                new Uri("https://github.com/MaTows02/Synapse#readme"));
         }
         catch (Exception ex)
         {
