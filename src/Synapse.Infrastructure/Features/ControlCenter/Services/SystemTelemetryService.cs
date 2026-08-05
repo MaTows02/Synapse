@@ -7,23 +7,49 @@ namespace Synapse.Infrastructure.Features.ControlCenter.Services;
 
 public sealed class SystemTelemetryService : ISystemTelemetryService
 {
+    private static readonly TimeSpan FastSampleLifetime = TimeSpan.FromMilliseconds(750);
     private readonly object _sampleLock = new();
+    private readonly SemaphoreSlim _sampleGate = new(1, 1);
     private ulong _previousIdleTime;
     private ulong _previousKernelTime;
     private ulong _previousUserTime;
     private DateTimeOffset _slowSensorsCollectedAt = DateTimeOffset.MinValue;
     private IReadOnlyList<FanStatus> _cachedFans = Array.Empty<FanStatus>();
     private double? _cachedTemperature;
+    private SystemTelemetrySnapshot? _cachedSnapshot;
+    private DateTimeOffset _cachedSnapshotAt;
 
-    public Task<SystemTelemetrySnapshot> SampleAsync(CancellationToken cancellationToken = default) =>
-        Task.Run(() =>
+    public async Task<SystemTelemetrySnapshot> SampleAsync(CancellationToken cancellationToken = default)
+    {
+        var cached = _cachedSnapshot;
+        if (cached is not null && DateTimeOffset.UtcNow - _cachedSnapshotAt < FastSampleLifetime)
+            return cached;
+
+        await _sampleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            try { return Sample(cancellationToken); }
-            catch when (!cancellationToken.IsCancellationRequested)
+            cached = _cachedSnapshot;
+            if (cached is not null && DateTimeOffset.UtcNow - _cachedSnapshotAt < FastSampleLifetime)
+                return cached;
+
+            var snapshot = await Task.Run(() =>
             {
-                return new SystemTelemetrySnapshot(DateTimeOffset.Now, 0, 0, 0, 0, 0, null, Array.Empty<FanStatus>());
-            }
-        }, cancellationToken);
+                try { return Sample(cancellationToken); }
+                catch when (!cancellationToken.IsCancellationRequested)
+                {
+                    return new SystemTelemetrySnapshot(DateTimeOffset.Now, 0, 0, 0, 0, 0, null, Array.Empty<FanStatus>());
+                }
+            }, cancellationToken).ConfigureAwait(false);
+
+            _cachedSnapshot = snapshot;
+            _cachedSnapshotAt = DateTimeOffset.UtcNow;
+            return snapshot;
+        }
+        finally
+        {
+            _sampleGate.Release();
+        }
+    }
 
     private SystemTelemetrySnapshot Sample(CancellationToken cancellationToken)
     {
@@ -31,7 +57,9 @@ public sealed class SystemTelemetryService : ISystemTelemetryService
 
         var cpu = ReadCpuUsage();
         var disk = QueryDouble("root\\CIMV2", "SELECT PercentDiskTime FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk WHERE Name='_Total'", "PercentDiskTime");
+        cancellationToken.ThrowIfCancellationRequested();
         var network = QuerySum("root\\CIMV2", "SELECT BytesTotalPersec FROM Win32_PerfFormattedData_Tcpip_NetworkInterface", "BytesTotalPersec");
+        cancellationToken.ThrowIfCancellationRequested();
         var gpu = QuerySum("root\\CIMV2", "SELECT Name, UtilizationPercentage FROM Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine WHERE Name LIKE '%engtype_3D%'", "UtilizationPercentage");
 
         var memory = ReadMemoryUsage();
@@ -83,7 +111,7 @@ public sealed class SystemTelemetryService : ISystemTelemetryService
     {
         lock (_sampleLock)
         {
-            if (DateTimeOffset.Now - _slowSensorsCollectedAt < TimeSpan.FromSeconds(15))
+            if (DateTimeOffset.Now - _slowSensorsCollectedAt < TimeSpan.FromSeconds(30))
                 return (_cachedTemperature, _cachedFans);
 
             var fans = new List<FanStatus>();
