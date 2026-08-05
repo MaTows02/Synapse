@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
 using Synapse.Core.Features.ControlCenter.Interfaces;
@@ -25,7 +26,7 @@ public sealed partial class ControlCenterPage : Page
     private readonly IDeepUninstallService _uninstaller = App.Services.GetRequiredService<IDeepUninstallService>();
     private readonly ISystemDiagnosticsService _diagnostics = App.Services.GetRequiredService<ISystemDiagnosticsService>();
     private readonly IPerformanceModeService _performance = App.Services.GetRequiredService<IPerformanceModeService>();
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(3) };
     private DeepUninstallPlan? _uninstallPlan;
     private IReadOnlyList<DiagnosticCheckResult> _lastDiagnosticChecks = Array.Empty<DiagnosticCheckResult>();
     private readonly Dictionary<string, Control> _gameTuningInputs = new(StringComparer.OrdinalIgnoreCase);
@@ -35,6 +36,8 @@ public sealed partial class ControlCenterPage : Page
     private readonly HashSet<string> _loadedCategories = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FrameworkElement> _loadedViews = new(StringComparer.Ordinal);
     private bool _pageLoaded;
+    private bool _telemetryRefreshInProgress;
+    private TaskManagerSnapshot? _latestTaskSnapshot;
 
     public ControlCenterPage()
     {
@@ -66,7 +69,7 @@ public sealed partial class ControlCenterPage : Page
             switch (category)
             {
                 case "GameBooster":
-                    BuildBoosterRules();
+                    await RefreshBoosterCandidatesAsync();
                     await RefreshGamesAsync();
                     await _booster.StartMonitoringAsync();
                     break;
@@ -95,6 +98,8 @@ public sealed partial class ControlCenterPage : Page
 
     private async Task RefreshTelemetryAsync()
     {
+        if (_telemetryRefreshInProgress) return;
+        _telemetryRefreshInProgress = true;
         try
         {
             var sample = await _telemetry.SampleAsync();
@@ -109,6 +114,7 @@ public sealed partial class ControlCenterPage : Page
             NetworkThroughputText.Text = $"{sample.NetworkBytesPerSecond / 1024 / 1024:0.00} Mo/s";
         }
         catch { LiveStatusText.Text = "● CAPTEURS INDISPONIBLES"; }
+        finally { _telemetryRefreshInProgress = false; }
     }
 
     private async Task RefreshDevicesAsync()
@@ -228,11 +234,17 @@ public sealed partial class ControlCenterPage : Page
 
         var profile = (await _booster.LoadProfilesAsync()).FirstOrDefault(x =>
             string.Equals(x.GameId, game.Id, StringComparison.OrdinalIgnoreCase));
+        BoosterProcessesList.SelectedItems.Clear();
+        BoosterServicesList.SelectedItems.Clear();
+        BoosterActionPicker.SelectedIndex = 0;
         if (profile is null) return;
         GameHighPriorityToggle.IsOn = profile.HighPriority;
         GameTimerToggle.IsOn = profile.RequestLowLatencyTimer;
         GamePowerPlanToggle.IsOn = profile.UseHighPerformancePowerPlan;
         GameKeepAwakeToggle.IsOn = profile.KeepComputerAwake;
+        BoosterActionPicker.SelectedIndex = profile.ProcessRules.Any(rule =>
+            rule.TargetKind == BoosterTargetKind.Process && rule.Action == BoosterRuleAction.Close) ? 1 : 0;
+        SelectSavedBoosterRules(profile);
     }
 
     private async Task RefreshGameTuningsAsync(DetectedGame game)
@@ -326,9 +338,25 @@ public sealed partial class ControlCenterPage : Page
     private async void CreateGameProfileButton_Click(object sender, RoutedEventArgs e)
     {
         if (GamesList.SelectedItem is not DetectedGame game || string.IsNullOrWhiteSpace(game.ExecutablePath)) { GameStatusText.Text = "Sélectionnez un jeu avec un exécutable détecté."; return; }
-        var rules = BoosterRulesPanel.Children.OfType<CheckBox>()
-            .Where(x => x.Tag is BoosterProcessRule)
-            .Select(x => ((BoosterProcessRule)x.Tag) with { Enabled = x.IsChecked == true })
+        var processAction = BoosterActionPicker.SelectedIndex == 1
+            ? BoosterRuleAction.Close
+            : BoosterRuleAction.Suspend;
+        var rules = BoosterProcessesList.SelectedItems.OfType<BoosterCandidateInfo>()
+            .Select(candidate => new BoosterProcessRule(
+                candidate.TargetName, candidate.DisplayName, candidate.Description, candidate.Recommended, true)
+            {
+                TargetKind = BoosterTargetKind.Process,
+                Action = processAction,
+                ExecutablePath = candidate.ExecutablePath
+            })
+            .Concat(BoosterServicesList.SelectedItems.OfType<BoosterCandidateInfo>()
+                .Select(candidate => new BoosterProcessRule(
+                    candidate.TargetName, candidate.DisplayName, candidate.Description, candidate.Recommended, true)
+                {
+                    TargetKind = BoosterTargetKind.Service,
+                    Action = BoosterRuleAction.StopService,
+                    ExecutablePath = candidate.ExecutablePath
+                }))
             .ToList();
         await _booster.SaveProfileAsync(new GameOptimizationProfile(
             game.Id,
@@ -341,31 +369,58 @@ public sealed partial class ControlCenterPage : Page
             GamePowerPlanToggle.IsOn,
             GameKeepAwakeToggle.IsOn));
         await _booster.StartMonitoringAsync();
-        GameStatusText.Text = $"Profil actif · {rules.Count(x => x.Enabled)} processus sélectionné(s) · restauration automatique à la fermeture du jeu.";
+        var processCount = rules.Count(rule => rule.TargetKind == BoosterTargetKind.Process);
+        var serviceCount = rules.Count(rule => rule.TargetKind == BoosterTargetKind.Service);
+        GameStatusText.Text = $"Profil actif · {processCount} application(s) · {serviceCount} service(s) · restauration automatique à la fermeture du jeu.";
     }
 
-    private void BuildBoosterRules()
+    private async Task RefreshBoosterCandidatesAsync()
     {
-        if (BoosterRulesPanel.Children.Count > 0) return;
-        var rules = new[]
-        {
-            new BoosterProcessRule("OneDrive", "OneDrive", "Synchronisation disque", true, false),
-            new BoosterProcessRule("YourPhone", "Mobile connecté", "Application non essentielle", true, false),
-            new BoosterProcessRule("Widgets", "Widgets", "Actualisations en arrière-plan", true, false),
-            new BoosterProcessRule("msedge", "Edge", "Peut contenir un travail non enregistré", false, false),
-            new BoosterProcessRule("chrome", "Chrome", "Peut contenir un travail non enregistré", false, false)
-        };
-        foreach (var rule in rules)
-        {
-            var checkBox = new CheckBox
-            {
-                Content = rule.Recommended ? $"{rule.DisplayName} · recommandé" : rule.DisplayName,
-                Tag = rule,
-                IsChecked = false
-            };
-            ToolTipService.SetToolTip(checkBox, rule.Reason);
-            BoosterRulesPanel.Children.Add(checkBox);
-        }
+        _latestTaskSnapshot = await _taskManager.CollectAsync();
+        var recommendedProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "OneDrive", "YourPhone", "Widgets" };
+
+        BoosterProcessesList.ItemsSource = _latestTaskSnapshot.Processes
+            .Where(process => process.CanTerminate)
+            .GroupBy(process => process.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderByDescending(process => process.MemoryBytes).First())
+            .Select(process => new BoosterCandidateInfo(
+                $"process:{process.Name}", process.Name, process.Description,
+                $"{process.MemoryDisplay} · {process.Status}", process.ExecutablePath,
+                BoosterTargetKind.Process, recommendedProcesses.Contains(process.Name), "Ouverte"))
+            .OrderByDescending(candidate => candidate.Recommended)
+            .ThenBy(candidate => candidate.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        BoosterServicesList.ItemsSource = _latestTaskSnapshot.Services
+            .Where(service => service.CanConfigure && service.State == "En cours")
+            .Select(service => new BoosterCandidateInfo(
+                $"service:{service.Id}", service.Id, service.Name,
+                string.IsNullOrWhiteSpace(service.Description) ? "Service Windows en cours" : service.Description,
+                service.ExecutablePath, BoosterTargetKind.Service, false, service.State))
+            .OrderBy(candidate => candidate.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        BoosterCandidateStatusText.Text =
+            $"{BoosterProcessesList.Items.Count} application(s) et {BoosterServicesList.Items.Count} service(s) disponibles.";
+    }
+
+    private void SelectSavedBoosterRules(GameOptimizationProfile profile)
+    {
+        var rules = profile.ProcessRules.Where(rule => rule.Enabled).ToList();
+        foreach (var candidate in BoosterProcessesList.Items.OfType<BoosterCandidateInfo>())
+            if (rules.Any(rule => rule.TargetKind == BoosterTargetKind.Process &&
+                string.Equals(rule.ProcessName, candidate.TargetName, StringComparison.OrdinalIgnoreCase)))
+                BoosterProcessesList.SelectedItems.Add(candidate);
+        foreach (var candidate in BoosterServicesList.Items.OfType<BoosterCandidateInfo>())
+            if (rules.Any(rule => rule.TargetKind == BoosterTargetKind.Service &&
+                string.Equals(rule.ProcessName, candidate.TargetName, StringComparison.OrdinalIgnoreCase)))
+                BoosterServicesList.SelectedItems.Add(candidate);
+    }
+
+    private async void RefreshBoosterCandidatesButton_Click(object sender, RoutedEventArgs e)
+    {
+        BoosterCandidateStatusText.Text = "Lecture des applications et services en cours…";
+        await RefreshBoosterCandidatesAsync();
     }
 
     private async void RefreshHardwareButton_Click(object sender, RoutedEventArgs e) => await RefreshHardwareAsync();
@@ -684,11 +739,11 @@ public sealed partial class ControlCenterPage : Page
 
     private async Task RefreshTaskManagerAsync()
     {
-        var snapshot = await _taskManager.CollectAsync();
-        TaskProcessesList.ItemsSource = snapshot.Processes;
-        StartupItemsList.ItemsSource = snapshot.StartupItems;
-        WindowsServicesList.ItemsSource = snapshot.Services;
-        ProcessCountText.Text = $"{snapshot.Processes.Count} processus · {snapshot.Processes.Sum(process => process.MemoryBytes) / 1024d / 1024d / 1024d:0.0} Go de mémoire";
+        _latestTaskSnapshot = await _taskManager.CollectAsync();
+        TaskProcessesList.ItemsSource = _latestTaskSnapshot.Processes;
+        StartupItemsList.ItemsSource = _latestTaskSnapshot.StartupItems;
+        WindowsServicesList.ItemsSource = _latestTaskSnapshot.Services;
+        ProcessCountText.Text = $"{_latestTaskSnapshot.Processes.Count} processus · {_latestTaskSnapshot.Processes.Sum(process => process.MemoryBytes) / 1024d / 1024d / 1024d:0.0} Go de mémoire";
     }
 
     private async void RefreshTaskManagerButton_Click(object sender, RoutedEventArgs e)
@@ -711,25 +766,134 @@ public sealed partial class ControlCenterPage : Page
 
     private async void EndTaskButton_Click(object sender, RoutedEventArgs e)
     {
-        if (TaskProcessesList.SelectedItem is not TaskProcessInfo process || !process.CanTerminate)
+        var processes = SelectedProcesses().Where(process => process.CanTerminate).ToList();
+        if (processes.Count == 0)
         {
-            TaskManagerStatusText.Text = "Sélectionne un processus utilisateur pouvant être arrêté.";
+            TaskManagerStatusText.Text = "Sélectionne une ou plusieurs applications pouvant être arrêtées.";
             return;
         }
 
         var confirmation = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = $"Terminer {process.Name} ?",
-            Content = "Les données non enregistrées de cette application peuvent être perdues.",
-            PrimaryButtonText = "Terminer la tâche",
+            Title = processes.Count == 1 ? $"Terminer {processes[0].Name} ?" : $"Terminer {processes.Count} applications ?",
+            Content = "Les données non enregistrées des applications sélectionnées peuvent être perdues.",
+            PrimaryButtonText = processes.Count == 1 ? "Terminer la tâche" : "Tout terminer",
             CloseButtonText = "Annuler",
             DefaultButton = ContentDialogButton.Close
         };
         if (await confirmation.ShowAsync() != ContentDialogResult.Primary) return;
-        var result = await _taskManager.TerminateProcessAsync(process.Id);
-        TaskManagerStatusText.Text = result.Message;
-        if (result.Succeeded) await RefreshTaskManagerAsync();
+        var results = new List<OperationResult>();
+        foreach (var process in processes) results.Add(await _taskManager.TerminateProcessAsync(process.Id));
+        TaskManagerStatusText.Text = BuildBatchResult(results);
+        if (results.Any(result => result.Succeeded)) await RefreshTaskManagerAsync();
+    }
+
+    private async void RestartTaskMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var processes = SelectedProcesses().Where(process => process.CanTerminate && !string.IsNullOrWhiteSpace(process.ExecutablePath)).ToList();
+        if (processes.Count == 0)
+        {
+            TaskManagerStatusText.Text = "Aucune application redémarrable n’est sélectionnée.";
+            return;
+        }
+
+        var results = new List<OperationResult>();
+        foreach (var process in processes) results.Add(await _taskManager.RestartProcessAsync(process.Id));
+        TaskManagerStatusText.Text = BuildBatchResult(results);
+        await RefreshTaskManagerAsync();
+    }
+
+    private void OpenProcessLocationMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var process = SelectedProcesses().FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.ExecutablePath));
+        if (process is null) { TaskManagerStatusText.Text = "Le chemin de cette application n’est pas accessible."; return; }
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{process.ExecutablePath}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex) { TaskManagerStatusText.Text = $"Impossible d’ouvrir l’emplacement : {ex.Message}"; }
+    }
+
+    private void TaskProcessesList_RightTapped(object sender, RightTappedRoutedEventArgs e) =>
+        SelectRightClickedItem(TaskProcessesList, e.OriginalSource as DependencyObject);
+
+    private void WindowsServicesList_RightTapped(object sender, RightTappedRoutedEventArgs e) =>
+        SelectRightClickedItem(WindowsServicesList, e.OriginalSource as DependencyObject);
+
+    private async void ServiceActionMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { Tag: string action }) return;
+        var services = SelectedServices().Where(service => service.CanConfigure).ToList();
+        if (services.Count == 0)
+        {
+            TaskManagerStatusText.Text = "Sélectionne un ou plusieurs services configurables.";
+            return;
+        }
+
+        var results = new List<OperationResult>();
+        foreach (var service in services)
+        {
+            var result = action switch
+            {
+                "Start" => await _taskManager.StartServiceAsync(service.Id),
+                "Stop" => await _taskManager.StopServiceAsync(service.Id),
+                "Restart" => await _taskManager.RestartServiceAsync(service.Id),
+                _ => OperationResult.Failure("Action de service non reconnue.")
+            };
+            results.Add(result);
+        }
+        TaskManagerStatusText.Text = BuildBatchResult(results);
+        await RefreshTaskManagerAsync();
+    }
+
+    private async void ServiceStartModeMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { Tag: string startMode }) return;
+        var services = SelectedServices().Where(service => service.CanConfigure).ToList();
+        var results = new List<OperationResult>();
+        foreach (var service in services)
+            results.Add(await _taskManager.SetServiceStartModeAsync(service.Id, startMode));
+        TaskManagerStatusText.Text = results.Count == 0
+            ? "Sélectionne un ou plusieurs services configurables."
+            : BuildBatchResult(results);
+        if (results.Any(result => result.Succeeded)) await RefreshTaskManagerAsync();
+    }
+
+    private IEnumerable<TaskProcessInfo> SelectedProcesses()
+    {
+        var selected = TaskProcessesList.SelectedItems.OfType<TaskProcessInfo>().ToList();
+        return selected.Count > 0
+            ? selected
+            : TaskProcessesList.SelectedItem is TaskProcessInfo process ? [process] : [];
+    }
+
+    private IEnumerable<WindowsServiceInfo> SelectedServices()
+    {
+        var selected = WindowsServicesList.SelectedItems.OfType<WindowsServiceInfo>().ToList();
+        return selected.Count > 0
+            ? selected
+            : WindowsServicesList.SelectedItem is WindowsServiceInfo service ? [service] : [];
+    }
+
+    private static string BuildBatchResult(IReadOnlyCollection<OperationResult> results)
+    {
+        if (results.Count == 1) return results.First().Message;
+        var succeeded = results.Count(result => result.Succeeded);
+        return $"{succeeded}/{results.Count} action(s) effectuée(s).";
+    }
+
+    private static void SelectRightClickedItem(ListView list, DependencyObject? source)
+    {
+        for (var current = source; current is not null; current = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(current))
+        {
+            if (current is not ListViewItem container) continue;
+            var item = list.ItemFromContainer(container);
+            if (item is null || list.SelectedItems.Contains(item)) return;
+            list.SelectedItems.Clear();
+            list.SelectedItems.Add(item);
+            return;
+        }
     }
 
     private void OpenWindowsTaskManagerButton_Click(object sender, RoutedEventArgs e)

@@ -9,7 +9,7 @@
     xmlns:fluentIcons="using:FluentIcons.WinUI"
     xmlns:helpers="using:Synapse.UI.Features.Common.Helpers"
     x:DefaultBindMode="OneWay"
-    NavigationCacheMode="Enabled">
+    NavigationCacheMode="Disabled">
 
     <Grid Padding="0,0,12,0">
         <Grid.RowDefinitions>

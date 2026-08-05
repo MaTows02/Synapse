@@ -36,6 +36,7 @@ internal static class FrenchAppDescriptionTranslator
         ["Classic style Start Menu for Windows"] = "Menu Démarrer de style classique pour Windows.",
         ["Customization platform for Windows"] = "Plateforme de personnalisation pour Windows.",
         ["Free and open-source animated desktop wallpaper application"] = "Application gratuite et open source de fonds d’écran animés.",
+        ["Open-source brightness controls for one or more external monitors using DDC/CI"] = "Contrôle open source de la luminosité d’un ou plusieurs écrans externes via DDC/CI, sans utiliser leurs boutons physiques.",
         ["Open-source alternative to Wallpaper Engine for animated desktop backgrounds"] = "Alternative open source à Wallpaper Engine pour les fonds d’écran animés.",
         ["Desktop customization tool for Windows"] = "Outil de personnalisation du Bureau Windows.",
         ["Utility that enhances the Windows Explorer experience"] = "Utilitaire améliorant l’expérience de l’Explorateur Windows.",

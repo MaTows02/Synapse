@@ -41,6 +41,9 @@ public class IconCoverageTests
         "windows-app-writing-assistant",
         "windows-app-ai-workloads",
         "windows-app-copilot-plus-pc",
+        // Twinkle Tray was added to the Synapse catalog before package-icons published
+        // xanderfrangos.twinkletray.png. The UI uses its colored app fallback until then.
+        "external-app-twinkle-tray",
     };
 
     private static HashSet<string> LoadManifestIconKeys()
