@@ -1,31 +1,22 @@
 using System.Text;
-using Synapse.Core.Features.Common.Constants;
 
 namespace Synapse.Infrastructure.Features.AdvancedTools.ScriptSections;
 
 /// <summary>
-/// Handles special feature script sections: user customizations scheduled task and clean start menu layout.
+/// Generates safe, explicit customization script sections.
 /// </summary>
 internal static class SpecialFeatureScriptSection
 {
+    /// <summary>
+    /// Kept for compatibility with existing script builders.
+    /// Synapse no longer creates persistent scheduled tasks, launches hidden PowerShell,
+    /// bypasses execution policy, or runs customization scripts as SYSTEM.
+    /// </summary>
     public static void AppendUserCustomizationsScheduledTask(StringBuilder sb, string indent)
     {
         sb.AppendLine();
-        sb.AppendLine($"{indent}# ============================================================================");
-        sb.AppendLine($"{indent}# USER CUSTOMIZATIONS SCHEDULED TASK");
-        sb.AppendLine($"{indent}# ============================================================================");
-        sb.AppendLine();
-        sb.AppendLine($"{indent}Write-Log \"Registering UserCustomizations scheduled task...\" \"INFO\"");
-        sb.AppendLine($"{indent}try {{");
-        sb.AppendLine($"{indent}    $action = New-ScheduledTaskAction -Execute \"powershell.exe\" -Argument \"-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File {ScriptPaths.UnattendScriptPath} -UserCustomizations\"");
-        sb.AppendLine($"{indent}    $trigger = New-ScheduledTaskTrigger -AtLogOn");
-        sb.AppendLine($"{indent}    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0");
-        sb.AppendLine($"{indent}    $principal = New-ScheduledTaskPrincipal -UserId \"SYSTEM\" -LogonType ServiceAccount -RunLevel Highest");
-        sb.AppendLine($"{indent}    Register-ScheduledTask -TaskName \"UserCustomizations\" -TaskPath \"\\\" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null");
-        sb.AppendLine($"{indent}    Write-Log \"Registered scheduled task: UserCustomizations\" \"SUCCESS\"");
-        sb.AppendLine($"{indent}}} catch {{");
-        sb.AppendLine($"{indent}    Write-Log \"Failed to register UserCustomizations task: `$(`$_.Exception.Message)\" \"ERROR\"");
-        sb.AppendLine($"{indent}}}");
+        sb.AppendLine($"{indent}# User customizations scheduled task intentionally disabled.");
+        sb.AppendLine($"{indent}# Customizations must be started explicitly by the signed Synapse application.");
         sb.AppendLine();
     }
 
