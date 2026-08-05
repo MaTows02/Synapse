@@ -7,7 +7,7 @@ using Windows.System;
 namespace Synapse.UI.Features.Common.Helpers;
 
 /// <summary>
-/// Applies fast-scroll keyboard handling (PageUp/PageDown/Home/End) to WinUI 3
+/// Applies accelerated mouse-wheel and keyboard scrolling to WinUI 3
 /// <see cref="ScrollView"/> hosts.
 ///
 /// Background: all of our feature-detail pages host a <see cref="ListView"/> with
@@ -31,9 +31,11 @@ internal static class PageScrollHelper
 {
     /// <summary>
     /// Fraction of the viewport a single PageUp/PageDown press scrolls.
-    /// Kept small so content with only modest overflow doesn't jump straight to the end.
+    /// Large enough to make long optimization pages feel responsive without
+    /// jumping all the way to the end.
     /// </summary>
-    private const double PageStepFraction = 0.15;
+    private const double PageStepFraction = 0.85;
+    private const double WheelPixelsPerNotch = 180;
 
     /// <summary>
     /// Attaches fast-scroll handling to <paramref name="keyEventSource"/> for the
@@ -59,7 +61,29 @@ internal static class PageScrollHelper
             UIElement.KeyDownEvent,
             new KeyEventHandler((s, e) => HandleKey(scrollView, e)),
             handledEventsToo: true);
+
+        keyEventSource.AddHandler(
+            UIElement.PointerWheelChangedEvent,
+            new PointerEventHandler((s, e) => HandleWheel(scrollView, e)),
+            handledEventsToo: true);
     }
+
+    public static void HandleWheel(ScrollView scrollView, PointerRoutedEventArgs e)
+    {
+        if (scrollView == null || e == null || scrollView.ScrollableHeight <= 0) return;
+        if ((e.KeyModifiers & VirtualKeyModifiers.Control) != 0) return;
+        if (ShouldSkipForFocusedElement(e.OriginalSource as DependencyObject, scrollView)) return;
+
+        var properties = e.GetCurrentPoint(scrollView).Properties;
+        if (properties.IsHorizontalMouseWheel || properties.MouseWheelDelta == 0) return;
+
+        scrollView.ScrollBy(0, CalculateWheelOffset(properties.MouseWheelDelta),
+            new ScrollingScrollOptions(ScrollingAnimationMode.Disabled));
+        e.Handled = true;
+    }
+
+    internal static double CalculateWheelOffset(int wheelDelta) =>
+        -wheelDelta / 120d * WheelPixelsPerNotch;
 
     /// <summary>
     /// Inspects <paramref name="e"/> and scrolls <paramref name="scrollView"/> if

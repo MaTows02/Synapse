@@ -16,7 +16,12 @@ public interface ITaskManagerService
 {
     Task<TaskManagerSnapshot> CollectAsync(CancellationToken cancellationToken = default);
     Task<OperationResult> TerminateProcessAsync(int processId, CancellationToken cancellationToken = default);
+    Task<OperationResult> RestartProcessAsync(int processId, CancellationToken cancellationToken = default);
     Task<OperationResult> SetStartupItemEnabledAsync(string itemId, bool enabled, CancellationToken cancellationToken = default);
+    Task<OperationResult> StartServiceAsync(string serviceName, CancellationToken cancellationToken = default);
+    Task<OperationResult> StopServiceAsync(string serviceName, CancellationToken cancellationToken = default);
+    Task<OperationResult> RestartServiceAsync(string serviceName, CancellationToken cancellationToken = default);
+    Task<OperationResult> SetServiceStartModeAsync(string serviceName, string startMode, CancellationToken cancellationToken = default);
 }
 
 public interface IDeviceControlService

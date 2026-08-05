@@ -125,7 +125,8 @@ public sealed record WindowsServiceInfo(
     string StartMode,
     string State,
     int ProcessId,
-    bool CanConfigure);
+    bool CanConfigure,
+    string ExecutablePath = "");
 
 public sealed record TaskManagerSnapshot(
     DateTimeOffset CollectedAt,
@@ -147,7 +148,35 @@ public sealed record BoosterProcessRule(
     string DisplayName,
     string Reason,
     bool Recommended,
-    bool Enabled);
+    bool Enabled)
+{
+    public BoosterTargetKind TargetKind { get; init; } = BoosterTargetKind.Process;
+    public BoosterRuleAction Action { get; init; } = BoosterRuleAction.Suspend;
+    public string ExecutablePath { get; init; } = string.Empty;
+}
+
+public enum BoosterTargetKind
+{
+    Process,
+    Service
+}
+
+public enum BoosterRuleAction
+{
+    Suspend,
+    Close,
+    StopService
+}
+
+public sealed record BoosterCandidateInfo(
+    string Id,
+    string TargetName,
+    string DisplayName,
+    string Description,
+    string ExecutablePath,
+    BoosterTargetKind TargetKind,
+    bool Recommended,
+    string State);
 
 public sealed record GameOptimizationProfile(
     string GameId,
@@ -164,7 +193,8 @@ public sealed record BoosterSession(
     string GameId,
     DateTimeOffset StartedAt,
     IReadOnlyList<int> SuspendedProcessIds,
-    uint? GrantedTimerResolution100Ns);
+    uint? GrantedTimerResolution100Ns,
+    IReadOnlyList<string>? StoppedServiceNames = null);
 
 public enum GameTuningControlKind
 {

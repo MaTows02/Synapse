@@ -83,6 +83,18 @@ public static partial class ExternalAppDefinitions
                     },
                     new ItemDefinition
                     {
+                        Id = "external-app-twinkle-tray",
+                        Name = "Twinkle Tray",
+                        Description = "Open-source brightness controls for one or more external monitors using DDC/CI",
+                        RegistryDisplayName = "Twinkle Tray",
+                        GroupName = "Customization Utilities",
+                        WinGetPackageId = ["xanderfrangos.twinkletray"],
+                        ChocoPackageId = "twinkle-tray",
+                        MsStoreId = "9PLJWWSV01LK",
+                        WebsiteUrl = "https://github.com/xanderfrangos/twinkle-tray",
+                    },
+                    new ItemDefinition
+                    {
                         Id = "external-app-sucrose-wallpaper",
                         Name = "Sucrose Wallpaper Engine",
                         Description = "Open-source alternative to Wallpaper Engine for animated desktop backgrounds",

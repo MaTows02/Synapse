@@ -37,4 +37,14 @@ public class PageScrollHelperTests
     {
         PageScrollHelper.IsPagingKey(key).Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData(120, -180)]
+    [InlineData(-120, 180)]
+    [InlineData(240, -360)]
+    [InlineData(0, 0)]
+    public void CalculateWheelOffset_AcceleratesAndPreservesDirection(int delta, double expected)
+    {
+        PageScrollHelper.CalculateWheelOffset(delta).Should().Be(expected);
+    }
 }

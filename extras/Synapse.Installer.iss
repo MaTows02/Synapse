@@ -42,6 +42,10 @@ OutputDir=..\installer-output
 OutputBaseFilename=Synapse.Installer
 SetupIconFile=..\src\Synapse.UI\Assets\AppIcons\Synapse-rocket.ico
 VersionInfoCopyright=Copyright © 2026 MaTows
+VersionInfoCompany=MaTows
+VersionInfoDescription=Synapse Windows optimization and system control center
+VersionInfoProductName=Synapse
+VersionInfoOriginalFileName=Synapse.Installer.exe
 SolidCompression=yes
 WizardStyle=modern
 ; Dir page is replaced by a custom page that appears after task selection
@@ -57,68 +61,6 @@ RestartIfNeededByRun=no
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Code]
-function InitializeUninstall(): Boolean;
-var
-  ErrorCode: Integer;
-begin
-  Result := True;
-  // Check if the application is running and ask to close it
-  if CheckForMutexes('SynapseSetupMutex') then
-  begin
-    if MsgBox('Synapse is currently running. Do you want to close it before uninstalling?', 
-              mbConfirmation, MB_YESNO) = IDYES then
-    begin
-      // Try to close the application gracefully
-      ShellExec('open', 'taskkill.exe', '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
-    end;
-  end;
-end;
-
-// Clean up old installation files while preserving user data
-procedure CleanupOldInstallation;
-var
-  FindRec: TFindRec;
-  OldInstallPath: String;
-  ScriptsPath: String;
-  HasScriptsFolder: Boolean;
-begin
-  OldInstallPath := ExpandConstant('{app}');
-  ScriptsPath := OldInstallPath + '\Scripts';
-  HasScriptsFolder := DirExists(ScriptsPath);
-  
-  // Only perform cleanup if this is an update (directory already exists)
-  if DirExists(OldInstallPath) then
-  begin
-    // Delete all files in the root directory
-    if FindFirst(OldInstallPath + '\*.*', FindRec) then
-    begin
-      try
-        repeat
-          if (FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then
-            DeleteFile(OldInstallPath + '\' + FindRec.Name);
-        until not FindNext(FindRec);
-      finally
-        FindClose(FindRec);
-      end;
-    end;
-    
-    // Delete all subdirectories except Scripts
-    if FindFirst(OldInstallPath + '\*.*', FindRec) then
-    begin
-      try
-        repeat
-          if ((FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0) and
-             (FindRec.Name <> '.') and (FindRec.Name <> '..') and
-             (CompareText(FindRec.Name, 'Scripts') <> 0) then
-            DelTree(OldInstallPath + '\' + FindRec.Name, True, True, True);
-        until not FindNext(FindRec);
-      finally
-        FindClose(FindRec);
-      end;
-    end;
-  end;
-end;
-
 var
   CustomDirPage: TInputDirWizardPage;
   HasSetDefaultDir: Boolean;
@@ -135,15 +77,6 @@ begin
     False, '');
   CustomDirPage.Add('');
   CustomDirPage.Values[0] := ExpandConstant('{autopf}\{#MyAppName}');
-end;
-
-// This function runs right before the actual installation starts
-function PrepareToInstall(var NeedsRestart: Boolean): String;
-begin
-  NeedsRestart := False;
-  // Clean up old installation files while preserving user data
-  CleanupOldInstallation;
-  Result := '';
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;

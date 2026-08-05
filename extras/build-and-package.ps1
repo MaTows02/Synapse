@@ -47,7 +47,8 @@ param (
     [string]$CertificateThumbprint = "",
     [switch]$SignApplication = $false,
     [switch]$Beta = $false,
-    [switch]$SkipTests = $false
+    [switch]$SkipTests = $false,
+    [switch]$SkipDefenderScan = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -208,18 +209,14 @@ function Set-FileSignature {
     Write-Host ("Signing {0}..." -f $FilePath) -ForegroundColor Cyan
     $thumbprint = $Certificate.Thumbprint
     
-    # Sign the file using the certificate from the store
-    $signCommand = "& '$signtoolPath' sign /tr '$TimestampServer' /td sha256 /fd sha256 /sha1 $thumbprint '$FilePath'"
-    
     try {
-        $result = Invoke-Expression $signCommand
+        & $signtoolPath sign /tr $TimestampServer /td sha256 /fd sha256 /sha1 $thumbprint $FilePath
         if ($LASTEXITCODE -eq 0) {
             Write-Host ("Successfully signed {0}" -f $FilePath) -ForegroundColor Green
             return $true
         }
         else {
             Write-Host ("Failed to sign {0}. Error code: {1}" -f $FilePath, $LASTEXITCODE) -ForegroundColor Red
-            Write-Host $result -ForegroundColor Red
             return $false
         }
     }
@@ -397,6 +394,63 @@ catch {
     exit 1
 }
 
+function Test-WithMicrosoftDefender {
+    param([string]$FilePath)
+
+    if ($SkipDefenderScan) {
+        Write-Host "Microsoft Defender scan skipped (-SkipDefenderScan)." -ForegroundColor Yellow
+        return
+    }
+
+    $isAdministrator = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdministrator) {
+        Write-Host "Microsoft Defender scan skipped: run PowerShell as administrator to enable the final malware check." -ForegroundColor Yellow
+        return
+    }
+
+    $defenderCandidates = @()
+    $platformRoot = Join-Path $env:ProgramData "Microsoft\Windows Defender\Platform"
+    if (Test-Path $platformRoot) {
+        $defenderCandidates += Get-ChildItem $platformRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object { Join-Path $_.FullName "MpCmdRun.exe" }
+    }
+    $defenderCandidates += Join-Path $env:ProgramFiles "Windows Defender\MpCmdRun.exe"
+    $defender = $defenderCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $defender) {
+        Write-Host "Microsoft Defender command-line scanner is unavailable; no antivirus scan was run." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "Scanning the final installer with Microsoft Defender..." -ForegroundColor Cyan
+    & $defender -Scan -ScanType 3 -File $FilePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Microsoft Defender rejected the installer or could not complete the scan (exit code $LASTEXITCODE). Do not distribute this build."
+    }
+    Write-Host "Microsoft Defender scan completed without a detection." -ForegroundColor Green
+}
+
+function Write-SecurityManifest {
+    param([string]$FilePath)
+
+    $hash = Get-FileHash -Path $FilePath -Algorithm SHA256
+    $signature = Get-AuthenticodeSignature -FilePath $FilePath
+    $manifestPath = "$FilePath.security.json"
+    $hashPath = "$FilePath.sha256"
+    [ordered]@{
+        File = Split-Path $FilePath -Leaf
+        CreatedAtUtc = [DateTimeOffset]::UtcNow.ToString("O")
+        SizeBytes = (Get-Item $FilePath).Length
+        Sha256 = $hash.Hash
+        SignatureStatus = $signature.Status.ToString()
+        Signer = if ($signature.SignerCertificate) { $signature.SignerCertificate.Subject } else { "Unsigned" }
+    } | ConvertTo-Json | Set-Content -Path $manifestPath -Encoding utf8
+    "$($hash.Hash)  $(Split-Path $FilePath -Leaf)" | Set-Content -Path $hashPath -Encoding ascii
+    Write-Host "Security report: $manifestPath" -ForegroundColor DarkGray
+    Write-Host "SHA-256: $($hash.Hash)" -ForegroundColor Green
+}
+
 # Step 1: Clean the solution
 Write-Host "Cleaning solution..." -ForegroundColor Green
 & $msbuildPath "$projectPath" /t:Clean /p:Configuration=Release /p:Platform=x64
@@ -540,6 +594,13 @@ if ($shouldSign -and $certificate -and (Test-Path $installerPath)) {
 elseif (-not $shouldSign) {
     Write-Host "Skipping installer signing (executable was not signed)." -ForegroundColor Yellow
 }
+
+if (-not (Test-Path $installerPath)) {
+    throw "Installer output was not created at $installerPath"
+}
+
+Test-WithMicrosoftDefender -FilePath $installerPath
+Write-SecurityManifest -FilePath $installerPath
 
 Write-Host "Build and packaging completed successfully!" -ForegroundColor Cyan
 Write-Host "Installer created at: $installerPath" -ForegroundColor Green
