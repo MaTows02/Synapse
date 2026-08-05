@@ -1,7 +1,7 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Management;
 using System.ServiceProcess;
-using System.Collections.Concurrent;
 using Microsoft.Win32;
 using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
@@ -24,13 +24,39 @@ public sealed class TaskManagerService : ITaskManagerService
     };
 
     private static readonly ConcurrentDictionary<string, string> DescriptionCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan SnapshotLifetime = TimeSpan.FromMilliseconds(900);
+    private readonly SemaphoreSlim _collectionGate = new(1, 1);
+    private TaskManagerSnapshot? _cachedSnapshot;
+    private DateTimeOffset _cachedAt;
 
-    public Task<TaskManagerSnapshot> CollectAsync(CancellationToken cancellationToken = default) =>
-        Task.Run(() => new TaskManagerSnapshot(
-            DateTimeOffset.Now,
-            CollectProcesses(cancellationToken),
-            CollectStartupItems(),
-            CollectServices(cancellationToken)), cancellationToken);
+    public async Task<TaskManagerSnapshot> CollectAsync(CancellationToken cancellationToken = default)
+    {
+        var cached = _cachedSnapshot;
+        if (cached is not null && DateTimeOffset.UtcNow - _cachedAt < SnapshotLifetime)
+            return cached;
+
+        await _collectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cached = _cachedSnapshot;
+            if (cached is not null && DateTimeOffset.UtcNow - _cachedAt < SnapshotLifetime)
+                return cached;
+
+            var snapshot = await Task.Run(() => new TaskManagerSnapshot(
+                DateTimeOffset.Now,
+                CollectProcesses(cancellationToken),
+                CollectStartupItems(),
+                CollectServices(cancellationToken)), cancellationToken).ConfigureAwait(false);
+
+            _cachedSnapshot = snapshot;
+            _cachedAt = DateTimeOffset.UtcNow;
+            return snapshot;
+        }
+        finally
+        {
+            _collectionGate.Release();
+        }
+    }
 
     public Task<OperationResult> TerminateProcessAsync(int processId, CancellationToken cancellationToken = default) => Task.Run(() =>
     {
@@ -39,17 +65,18 @@ public sealed class TaskManagerService : ITaskManagerService
         {
             using var process = Process.GetProcessById(processId);
             if (process.Id == Environment.ProcessId || process.Id <= 4 || ProtectedProcesses.Contains(process.ProcessName))
-                return new OperationResult(false, "Ce processus Windows est protégé par Synapse.");
+                return OperationResult.Failure("Ce processus Windows est protégé par Synapse.");
 
             var name = process.ProcessName;
             process.Kill(entireProcessTree: true);
-            process.WaitForExit(5000);
-            return new OperationResult(true, $"{name} a été arrêté.");
+            process.WaitForExit(5_000);
+            InvalidateSnapshot();
+            return OperationResult.Success($"{name} a été arrêté.");
         }
-        catch (ArgumentException) { return new OperationResult(false, "Le processus est déjà fermé."); }
+        catch (ArgumentException) { return OperationResult.Failure("Le processus est déjà fermé."); }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
         {
-            return new OperationResult(false, $"Impossible d’arrêter ce processus : {ex.Message}");
+            return OperationResult.Failure($"Impossible d’arrêter ce processus : {ex.Message}");
         }
     }, cancellationToken);
 
@@ -67,7 +94,6 @@ public sealed class TaskManagerService : ITaskManagerService
             if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
                 return OperationResult.Failure("Le chemin de cette application n’est pas accessible : redémarrage impossible.");
 
-            var workingDirectory = Path.GetDirectoryName(executablePath) ?? string.Empty;
             process.Kill(entireProcessTree: true);
             if (!process.WaitForExit(5_000))
                 return OperationResult.Failure($"{name} ne s’est pas arrêté dans le délai prévu.");
@@ -75,9 +101,10 @@ public sealed class TaskManagerService : ITaskManagerService
             cancellationToken.ThrowIfCancellationRequested();
             Process.Start(new ProcessStartInfo(executablePath)
             {
-                WorkingDirectory = workingDirectory,
+                WorkingDirectory = Path.GetDirectoryName(executablePath) ?? string.Empty,
                 UseShellExecute = true
             });
+            InvalidateSnapshot();
             return OperationResult.Success($"{name} a été redémarré.");
         }
         catch (ArgumentException) { return OperationResult.Failure("Le processus est déjà fermé."); }
@@ -103,6 +130,7 @@ public sealed class TaskManagerService : ITaskManagerService
             var state = new byte[12];
             state[0] = enabled ? (byte)0x02 : (byte)0x03;
             key.SetValue(parts[2], state, RegistryValueKind.Binary);
+            InvalidateSnapshot();
             return OperationResult.Success(enabled ? "Programme réactivé au démarrage." : "Programme désactivé au démarrage.");
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
@@ -140,9 +168,9 @@ public sealed class TaskManagerService : ITaskManagerService
             var escapedName = serviceName.Replace("'", "''", StringComparison.Ordinal);
             using var service = new ManagementObject($"Win32_Service.Name='{escapedName}'");
             var result = Convert.ToUInt32(service.InvokeMethod("ChangeStartMode", [normalizedMode]));
-            return result == 0
-                ? OperationResult.Success($"Mode de démarrage défini sur {TranslateStartMode(normalizedMode)}.")
-                : OperationResult.Failure($"Windows a refusé la modification du service (code {result}).");
+            if (result != 0) return OperationResult.Failure($"Windows a refusé la modification du service (code {result}).");
+            InvalidateSnapshot();
+            return OperationResult.Success($"Mode de démarrage défini sur {TranslateStartMode(normalizedMode)}.");
         }
         catch (Exception ex) when (ex is ManagementException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
         {
@@ -150,7 +178,7 @@ public sealed class TaskManagerService : ITaskManagerService
         }
     }, cancellationToken);
 
-    private static Task<OperationResult> ChangeServiceStateAsync(string serviceName, ServiceAction action, CancellationToken cancellationToken) => Task.Run(() =>
+    private Task<OperationResult> ChangeServiceStateAsync(string serviceName, ServiceAction action, CancellationToken cancellationToken) => Task.Run(() =>
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (ProtectedServices.Contains(serviceName))
@@ -166,6 +194,7 @@ public sealed class TaskManagerService : ITaskManagerService
                     return OperationResult.Success("Le service est déjà en cours d’exécution.");
                 service.Start();
                 service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
+                InvalidateSnapshot();
                 return OperationResult.Success($"Le service {service.DisplayName} a démarré.");
             }
 
@@ -177,11 +206,15 @@ public sealed class TaskManagerService : ITaskManagerService
             }
 
             if (action == ServiceAction.Stop)
+            {
+                InvalidateSnapshot();
                 return OperationResult.Success($"Le service {service.DisplayName} a été arrêté.");
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
             service.Start();
             service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
+            InvalidateSnapshot();
             return OperationResult.Success($"Le service {service.DisplayName} a été redémarré.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or System.ServiceProcess.TimeoutException)
@@ -190,10 +223,16 @@ public sealed class TaskManagerService : ITaskManagerService
         }
     }, cancellationToken);
 
+    private void InvalidateSnapshot()
+    {
+        _cachedSnapshot = null;
+        _cachedAt = default;
+    }
+
     private static IReadOnlyList<TaskProcessInfo> CollectProcesses(CancellationToken cancellationToken)
     {
         var currentProcessId = Environment.ProcessId;
-        var processes = new List<TaskProcessInfo>();
+        var processes = new List<TaskProcessInfo>(256);
         foreach (var process in Process.GetProcesses())
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -236,7 +275,7 @@ public sealed class TaskManagerService : ITaskManagerService
             if (key is null) return;
             foreach (var valueName in key.GetValueNames())
             {
-                var command = key.GetValue(valueName)?.ToString() ?? "";
+                var command = key.GetValue(valueName)?.ToString() ?? string.Empty;
                 var executablePath = ExtractExecutablePath(command);
                 items.Add(new StartupItemInfo(
                     $"{hiveName}|{path}|{valueName}", valueName, command,
@@ -249,7 +288,7 @@ public sealed class TaskManagerService : ITaskManagerService
 
     private static IReadOnlyList<WindowsServiceInfo> CollectServices(CancellationToken cancellationToken)
     {
-        var services = new List<WindowsServiceInfo>();
+        var services = new List<WindowsServiceInfo>(256);
         try
         {
             using var searcher = new ManagementObjectSearcher("SELECT Name, DisplayName, Description, StartMode, State, ProcessId, PathName FROM Win32_Service");
