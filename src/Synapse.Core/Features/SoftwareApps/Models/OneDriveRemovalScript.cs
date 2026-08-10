@@ -36,7 +36,7 @@ public static class OneDriveRemovalScript
 # Check if script is running as Administrator
 If (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]""Administrator"")) {
     Try {
-        Start-Process PowerShell.exe -ArgumentList (""-NoProfile -ExecutionPolicy Bypass -File `""{0}`"""" -f $PSCommandPath) -Verb RunAs
+        Start-Process PowerShell.exe -ArgumentList (""-NoProfile -File `""{0}`"""" -f $PSCommandPath) -Verb RunAs
         Exit
     }
     Catch {

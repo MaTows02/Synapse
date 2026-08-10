@@ -3,23 +3,10 @@ using System.Text;
 namespace Synapse.Infrastructure.Features.AdvancedTools.ScriptSections;
 
 /// <summary>
-/// Generates safe, explicit customization script sections.
+/// Handles special feature script sections that do not require persistent background execution.
 /// </summary>
 internal static class SpecialFeatureScriptSection
 {
-    /// <summary>
-    /// Kept for compatibility with existing script builders.
-    /// Synapse no longer creates persistent scheduled tasks, launches hidden PowerShell,
-    /// bypasses execution policy, or runs customization scripts as SYSTEM.
-    /// </summary>
-    public static void AppendUserCustomizationsScheduledTask(StringBuilder sb, string indent)
-    {
-        sb.AppendLine();
-        sb.AppendLine($"{indent}# User customizations scheduled task intentionally disabled.");
-        sb.AppendLine($"{indent}# Customizations must be started explicitly by the signed Synapse application.");
-        sb.AppendLine();
-    }
-
     public static void AppendCleanStartMenuSection(StringBuilder sb, string indent)
     {
         sb.AppendLine();

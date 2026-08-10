@@ -114,6 +114,7 @@ public class AppRemovalScriptSectionTests
 
         var output = sb.ToString();
         output.Should().Contain("EdgeRemoval");
+        output.Should().NotContain("OpenWebSearchRepair");
     }
 
     // ---------------------------------------------------------------
@@ -209,11 +210,11 @@ public class AppRemovalScriptSectionTests
     }
 
     // ---------------------------------------------------------------
-    // AppendBloatRemovalScriptAsync - Scheduled task registration
+    // AppendBloatRemovalScriptAsync - One-time execution without persistence
     // ---------------------------------------------------------------
 
     [Fact]
-    public async Task AppendBloatRemovalScriptAsync_EmitsScheduledTaskRegistration()
+    public async Task AppendBloatRemovalScriptAsync_OmitsScheduledTaskRegistration()
     {
         var sb = new StringBuilder();
         var apps = new List<ConfigurationItem>
@@ -228,8 +229,10 @@ public class AppRemovalScriptSectionTests
         await _sut.AppendBloatRemovalScriptAsync(sb, apps, "    ");
 
         var output = sb.ToString();
-        output.Should().Contain("Register-ScheduledTask");
-        output.Should().Contain("New-ScheduledTaskAction");
+        output.Should().Contain("& $($script.Path)");
+        output.Should().NotContain("Register-ScheduledTask");
+        output.Should().NotContain("New-ScheduledTaskAction");
+        output.Should().NotContain("ExecutionPolicy Bypass");
     }
 
     // ---------------------------------------------------------------
@@ -255,64 +258,4 @@ public class AppRemovalScriptSectionTests
         output.Should().Contain("OneDriveRemoval");
     }
 
-    // ---------------------------------------------------------------
-    // AppendInstallerScriptContent
-    // ---------------------------------------------------------------
-
-    [Fact]
-    public void AppendInstallerScriptContent_ContainsInstallerScript()
-    {
-        var sb = new StringBuilder();
-
-        _sut.AppendInstallerScriptContent(sb);
-
-        var output = sb.ToString();
-        output.Should().Contain("Install .lnk");
-        output.Should().Contain("CreateShortcut");
-    }
-
-    [Fact]
-    public void AppendInstallerScriptContent_ContainsDownloadUrl()
-    {
-        var sb = new StringBuilder();
-
-        _sut.AppendInstallerScriptContent(sb);
-
-        sb.ToString().Should().Contain("get..net");
-    }
-
-    [Fact]
-    public void AppendInstallerScriptContent_ContainsDesktopShortcutCreation()
-    {
-        var sb = new StringBuilder();
-
-        _sut.AppendInstallerScriptContent(sb);
-
-        var output = sb.ToString();
-        output.Should().Contain("Install .lnk");
-        output.Should().Contain("WScript.Shell");
-        output.Should().Contain("CreateShortcut");
-    }
-
-    [Fact]
-    public void AppendInstallerScriptContent_UsesProvidedIndent()
-    {
-        var sb = new StringBuilder();
-
-        _sut.AppendInstallerScriptContent(sb, "        ");
-
-        sb.ToString().Should().Contain("        # Create desktop shortcut for  installer");
-    }
-
-    [Fact]
-    public void AppendInstallerScriptContent_ContainsErrorHandling()
-    {
-        var sb = new StringBuilder();
-
-        _sut.AppendInstallerScriptContent(sb);
-
-        var output = sb.ToString();
-        output.Should().Contain("try {");
-        output.Should().Contain("catch {");
-    }
 }
