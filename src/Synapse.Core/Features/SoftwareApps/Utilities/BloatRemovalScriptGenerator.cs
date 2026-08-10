@@ -93,7 +93,7 @@ public static class BloatRemovalScriptGenerator
         sb.AppendLine("# Check if script is running as Administrator");
         sb.AppendLine("If (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]\"Administrator\")) {");
         sb.AppendLine("    Try {");
-        sb.AppendLine("        Start-Process PowerShell.exe -ArgumentList (\"-NoProfile -ExecutionPolicy Bypass -File `\"{0}`\"\" -f $PSCommandPath) -Verb RunAs");
+        sb.AppendLine("        Start-Process PowerShell.exe -ArgumentList (\"-NoProfile -File `\"{0}`\"\" -f $PSCommandPath) -Verb RunAs");
         sb.AppendLine("        Exit");
         sb.AppendLine("    }");
         sb.AppendLine("    Catch {");

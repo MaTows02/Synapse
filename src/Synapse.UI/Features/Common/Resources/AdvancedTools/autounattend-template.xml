@@ -119,7 +119,7 @@
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
           <Description>Loads Scripts in this XML File</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
+          <Path>powershell.exe -NoProfile -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>2</Order>
@@ -129,17 +129,17 @@
         <RunSynchronousCommand wcm:action="add">
           <Order>3</Order>
           <Description>Disable All Network Adapters Temporarily so Windows Doesn't Update During OOBE and to Allow Local Account Creation</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Get-NetAdapter | Disable-NetAdapter -Confirm:$false"</Path>
+          <Path>powershell.exe -NoProfile -Command "Get-NetAdapter | Disable-NetAdapter -Confirm:$false"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>4</Order>
           <Description>Enables .NET Framework 3.5 from Windows Installation Media</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -Command "foreach($d in 'C','D','E','F','G','H','I','J','K'){$src=Join-Path ($d+':') 'sources\sxs';if(Test-Path $src\*.cab){dism /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:$src;break}}"</Path>
+          <Path>powershell.exe -NoProfile -Command "foreach($d in 'C','D','E','F','G','H','I','J','K'){$src=Join-Path ($d+':') 'sources\sxs';if(Test-Path $src\*.cab){dism /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:$src;break}}"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>5</Order>
           <Description>Runs  Script System Wide Operations like App Uninstalls, HKLM Registry entries etc.</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1"</Path>
+          <Path>powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1"</Path>
         </RunSynchronousCommand>
       </RunSynchronous>
     </component>
@@ -148,7 +148,7 @@
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
           <Description>Loads Scripts in this XML File</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
+          <Path>powershell.exe -NoProfile -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>2</Order>
@@ -158,17 +158,17 @@
         <RunSynchronousCommand wcm:action="add">
           <Order>3</Order>
           <Description>Disable All Network Adapters Temporarily so Windows Doesn't Update During OOBE and to Allow Local Account Creation</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Get-NetAdapter | Disable-NetAdapter -Confirm:$false"</Path>
+          <Path>powershell.exe -NoProfile -Command "Get-NetAdapter | Disable-NetAdapter -Confirm:$false"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>4</Order>
           <Description>Enables .NET Framework 3.5 from Windows Installation Media</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -Command "foreach($d in 'C','D','E','F','G','H','I','J','K'){$src=Join-Path ($d+':') 'sources\sxs';if(Test-Path $src\*.cab){dism /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:$src;break}}"</Path>
+          <Path>powershell.exe -NoProfile -Command "foreach($d in 'C','D','E','F','G','H','I','J','K'){$src=Join-Path ($d+':') 'sources\sxs';if(Test-Path $src\*.cab){dism /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:$src;break}}"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>5</Order>
           <Description>Runs  Script System Wide Operations like App Uninstalls, HKLM Registry entries etc.</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1"</Path>
+          <Path>powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1"</Path>
         </RunSynchronousCommand>
       </RunSynchronous>
     </component>
@@ -177,7 +177,7 @@
         <RunSynchronousCommand wcm:action="add">
           <Order>1</Order>
           <Description>Loads Scripts in this XML File</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
+          <Path>powershell.exe -NoProfile -Command "$xml = [xml]::new(); $xml.Load('C:\Windows\Panther\unattend.xml'); $sb = [scriptblock]::Create( $xml.unattend.Extensions.ExtractScript ); Invoke-Command -ScriptBlock $sb -ArgumentList $xml;"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>2</Order>
@@ -187,17 +187,17 @@
         <RunSynchronousCommand wcm:action="add">
           <Order>3</Order>
           <Description>Disable All Network Adapters Temporarily so Windows Doesn't Update During OOBE and to Allow Local Account Creation</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Get-NetAdapter | Disable-NetAdapter -Confirm:$false"</Path>
+          <Path>powershell.exe -NoProfile -Command "Get-NetAdapter | Disable-NetAdapter -Confirm:$false"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>4</Order>
           <Description>Enables .NET Framework 3.5 from Windows Installation Media</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -Command "foreach($d in 'C','D','E','F','G','H','I','J','K'){$src=Join-Path ($d+':') 'sources\sxs';if(Test-Path $src\*.cab){dism /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:$src;break}}"</Path>
+          <Path>powershell.exe -NoProfile -Command "foreach($d in 'C','D','E','F','G','H','I','J','K'){$src=Join-Path ($d+':') 'sources\sxs';if(Test-Path $src\*.cab){dism /Online /Enable-Feature /FeatureName:NetFx3 /All /LimitAccess /Source:$src;break}}"</Path>
         </RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add">
           <Order>5</Order>
           <Description>Runs  Script System Wide Operations like App Uninstalls, HKLM Registry entries etc.</Description>
-          <Path>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1"</Path>
+          <Path>powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1"</Path>
         </RunSynchronousCommand>
       </RunSynchronous>
     </component>
@@ -218,7 +218,12 @@
         <SynchronousCommand>
         <Order>1</Order>
         <Description>Enables Network Adapters After OOBE Completes</Description>
-        <CommandLine>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Get-NetAdapter | Enable-NetAdapter -Confirm:$false"</CommandLine>
+        <CommandLine>powershell.exe -NoProfile -Command "Get-NetAdapter | Enable-NetAdapter -Confirm:$false"</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand>
+          <Order>2</Order>
+          <Description>Applies Synapse user customizations once in the signed-in user's context</Description>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1" -UserCustomizations</CommandLine>
         </SynchronousCommand>
     </FirstLogonCommands>
     </component>
@@ -235,7 +240,12 @@
         <SynchronousCommand>
         <Order>1</Order>
         <Description>Enables Network Adapters After OOBE Completes</Description>
-        <CommandLine>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Get-NetAdapter | Enable-NetAdapter -Confirm:$false"</CommandLine>
+        <CommandLine>powershell.exe -NoProfile -Command "Get-NetAdapter | Enable-NetAdapter -Confirm:$false"</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand>
+          <Order>2</Order>
+          <Description>Applies Synapse user customizations once in the signed-in user's context</Description>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1" -UserCustomizations</CommandLine>
         </SynchronousCommand>
     </FirstLogonCommands>
     </component>
@@ -252,7 +262,12 @@
         <SynchronousCommand>
         <Order>1</Order>
         <Description>Enables Network Adapters After OOBE Completes</Description>
-        <CommandLine>powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Get-NetAdapter | Enable-NetAdapter -Confirm:$false"</CommandLine>
+        <CommandLine>powershell.exe -NoProfile -Command "Get-NetAdapter | Enable-NetAdapter -Confirm:$false"</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand>
+          <Order>2</Order>
+          <Description>Applies Synapse user customizations once in the signed-in user's context</Description>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File "C:\ProgramData\Synapse\Unattend\Scripts\SynapseEnhancements.ps1" -UserCustomizations</CommandLine>
         </SynchronousCommand>
     </FirstLogonCommands>
     </component>

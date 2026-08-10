@@ -93,27 +93,6 @@ public class ScriptPreambleSectionTests
     // ---------------------------------------------------------------
 
     [Fact]
-    public void AppendHelperFunctions_ContainsGetTargetUser()
-    {
-        var sb = new StringBuilder();
-
-        ScriptPreambleSection.AppendHelperFunctions(sb);
-
-        var output = sb.ToString();
-        output.Should().Contain("function Get-TargetUser");
-    }
-
-    [Fact]
-    public void AppendHelperFunctions_ContainsGetUserSID()
-    {
-        var sb = new StringBuilder();
-
-        ScriptPreambleSection.AppendHelperFunctions(sb);
-
-        sb.ToString().Should().Contain("function Get-UserSID");
-    }
-
-    [Fact]
     public void AppendHelperFunctions_ContainsSetRegistryValue()
     {
         var sb = new StringBuilder();
@@ -174,40 +153,17 @@ public class ScriptPreambleSectionTests
     }
 
     [Fact]
-    public void AppendHelperFunctions_ContainsStartProcessAsUser()
+    public void AppendHelperFunctions_OmitsUserImpersonationInterop()
     {
         var sb = new StringBuilder();
 
         ScriptPreambleSection.AppendHelperFunctions(sb);
 
-        sb.ToString().Should().Contain("function Start-ProcessAsUser");
-    }
-
-    // ---------------------------------------------------------------
-    // AppendStartProcessAsUser
-    // ---------------------------------------------------------------
-
-    [Fact]
-    public void AppendStartProcessAsUser_ContainsWin32Interop()
-    {
-        var sb = new StringBuilder();
-
-        ScriptPreambleSection.AppendStartProcessAsUser(sb);
-
         var output = sb.ToString();
-        output.Should().Contain("DllImport");
-        output.Should().Contain("advapi32.dll");
-        output.Should().Contain("CreateProcessAsUserW");
-    }
-
-    [Fact]
-    public void AppendStartProcessAsUser_ContainsSessionDetection()
-    {
-        var sb = new StringBuilder();
-
-        ScriptPreambleSection.AppendStartProcessAsUser(sb);
-
-        sb.ToString().Should().Contain("WTSGetActiveConsoleSessionId");
+        output.Should().NotContain("Start-ProcessAsUser");
+        output.Should().NotContain("DuplicateTokenEx");
+        output.Should().NotContain("CreateProcessAsUserW");
+        output.Should().NotContain("WTSGetActiveConsoleSessionId");
     }
 
     // ---------------------------------------------------------------

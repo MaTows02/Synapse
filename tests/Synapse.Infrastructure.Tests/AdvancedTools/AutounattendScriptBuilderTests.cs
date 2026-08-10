@@ -103,7 +103,7 @@ public class AutounattendScriptBuilderTests
         var result = await _sut.BuildmentsScriptAsync(config, allSettings);
 
         result.Should().Contain("function Set-RegistryValue");
-        result.Should().Contain("function Start-ProcessAsUser");
+        result.Should().NotContain("function Start-ProcessAsUser");
     }
 
     // ---------------------------------------------------------------
@@ -185,18 +185,20 @@ public class AutounattendScriptBuilderTests
     }
 
     // ---------------------------------------------------------------
-    // BuildmentsScriptAsync - Contains  installer
+    // BuildmentsScriptAsync - Omits remote-code installer shortcut
     // ---------------------------------------------------------------
 
     [Fact]
-    public async Task BuildmentsScriptAsync_ContainsInstaller()
+    public async Task BuildmentsScriptAsync_OmitsRemoteInstallerShortcut()
     {
         var config = new UnifiedConfigurationFile();
         var allSettings = new Dictionary<string, IEnumerable<SettingDefinition>>();
 
         var result = await _sut.BuildmentsScriptAsync(config, allSettings);
 
-        result.Should().Contain("Install .lnk");
+        result.Should().NotContain("Install .lnk");
+        result.Should().NotContain("irm '");
+        result.Should().NotContain("| iex");
     }
 
     // ---------------------------------------------------------------
@@ -215,26 +217,30 @@ public class AutounattendScriptBuilderTests
     }
 
     // ---------------------------------------------------------------
-    // BuildmentsScriptAsync - Contains UserCustomizations scheduled task
+    // BuildmentsScriptAsync - Omits persistent SYSTEM user-customization task
     // ---------------------------------------------------------------
 
     [Fact]
-    public async Task BuildmentsScriptAsync_ContainsUserCustomizationsTask()
+    public async Task BuildmentsScriptAsync_OmitsPersistentUserCustomizationsTask()
     {
         var config = new UnifiedConfigurationFile();
         var allSettings = new Dictionary<string, IEnumerable<SettingDefinition>>();
 
         var result = await _sut.BuildmentsScriptAsync(config, allSettings);
 
-        result.Should().Contain("UserCustomizations");
+        result.Should().NotContain("Register-ScheduledTask -TaskName \"UserCustomizations\"");
+        result.Should().NotContain("Start-ProcessAsUser");
+        result.Should().NotContain("DuplicateTokenEx");
+        result.Should().NotContain("CreateProcessAsUserW");
+        result.Should().NotContain("-WindowStyle Hidden -File");
     }
 
     // ---------------------------------------------------------------
-    // BuildmentsScriptAsync - Contains user detection bridge
+    // BuildmentsScriptAsync - Guards interactive-user execution
     // ---------------------------------------------------------------
 
     [Fact]
-    public async Task BuildmentsScriptAsync_ContainsUserDetectionBridge()
+    public async Task BuildmentsScriptAsync_RejectsSystemUserCustomizations()
     {
         var config = new UnifiedConfigurationFile();
         var allSettings = new Dictionary<string, IEnumerable<SettingDefinition>>();
@@ -244,6 +250,7 @@ public class AutounattendScriptBuilderTests
         result.Should().Contain("$runningAsSystem");
         result.Should().Contain("S-1-5-18");
         result.Should().Contain("UserCustomizationsApplied");
+        result.Should().Contain("UserCustomizations cannot run as SYSTEM");
     }
 
     // ---------------------------------------------------------------

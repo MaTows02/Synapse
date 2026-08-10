@@ -11,7 +11,7 @@ using Synapse.Core.Features.SoftwareApps.Utilities;
 namespace Synapse.Infrastructure.Features.AdvancedTools.ScriptSections;
 
 /// <summary>
-/// Handles scripts directory setup, app removal script embedding, and the  installer script.
+/// Handles scripts directory setup and one-time app removal script execution.
 /// </summary>
 internal class AppRemovalScriptSection
 {
@@ -97,24 +97,24 @@ internal class AppRemovalScriptSection
             AppendEmbeddedScript(sb, "OneDriveRemoval", "oneDriveRemoval", OneDriveRemovalScript.GetScript(), indent);
         }
 
-        // Execute the scripts and register scheduled tasks
+        // Execute the selected removal scripts once during setup.
         sb.AppendLine();
-        sb.AppendLine($"{indent}# Execute removal scripts and register scheduled tasks");
+        sb.AppendLine($"{indent}# Execute removal scripts once");
         sb.AppendLine($"{indent}$scriptsToExecute = @()");
 
         if (regularApps.Any() || capabilities.Any() || optionalFeatures.Any() || specialApps.Any())
         {
-            sb.AppendLine($"{indent}$scriptsToExecute += @{{Path = \"$scriptsDir\\BloatRemoval.ps1\"; Name = \"BloatRemoval\"; TriggerType = \"Logon\"}}");
+            sb.AppendLine($"{indent}$scriptsToExecute += @{{Path = \"$scriptsDir\\BloatRemoval.ps1\"; Name = \"BloatRemoval\"}}");
         }
 
         if (edgeRemovalNeeded)
         {
-            sb.AppendLine($"{indent}$scriptsToExecute += @{{Path = \"$scriptsDir\\EdgeRemoval.ps1\"; Name = \"EdgeRemoval\"; TriggerType = \"Startup\"}}");
+            sb.AppendLine($"{indent}$scriptsToExecute += @{{Path = \"$scriptsDir\\EdgeRemoval.ps1\"; Name = \"EdgeRemoval\"}}");
         }
 
         if (oneDriveRemovalNeeded)
         {
-            sb.AppendLine($"{indent}$scriptsToExecute += @{{Path = \"$scriptsDir\\OneDriveRemoval.ps1\"; Name = \"OneDriveRemoval\"; TriggerType = \"Logon\"}}");
+            sb.AppendLine($"{indent}$scriptsToExecute += @{{Path = \"$scriptsDir\\OneDriveRemoval.ps1\"; Name = \"OneDriveRemoval\"}}");
         }
 
         sb.AppendLine();
@@ -122,30 +122,10 @@ internal class AppRemovalScriptSection
         sb.AppendLine($"{indent}    if (Test-Path $script.Path) {{");
         sb.AppendLine($"{indent}        Write-Log \"Executing $($script.Name) script...\" \"INFO\"");
         sb.AppendLine($"{indent}        try {{");
-        sb.AppendLine($"{indent}            Start-Process powershell.exe -ArgumentList \"-ExecutionPolicy Bypass -NoProfile -File `\"$($script.Path)`\"\" -Wait -NoNewWindow");
+        sb.AppendLine($"{indent}            & $($script.Path)");
         sb.AppendLine($"{indent}            Write-Log \"$($script.Name) execution completed\" \"SUCCESS\"");
         sb.AppendLine($"{indent}        }} catch {{");
         sb.AppendLine($"{indent}            Write-Log \"$($script.Name) execution failed: $($_.Exception.Message)\" \"WARNING\"");
-        sb.AppendLine($"{indent}        }}");
-        sb.AppendLine();
-        sb.AppendLine($"{indent}        # Register scheduled task");
-        sb.AppendLine($"{indent}        Write-Log \"Registering scheduled task for $($script.Name)...\" \"INFO\"");
-        sb.AppendLine($"{indent}        try {{");
-        sb.AppendLine($"{indent}            $action = New-ScheduledTaskAction -Execute \"powershell.exe\" -Argument \"-ExecutionPolicy Bypass -NoProfile -File `\"$($script.Path)`\"\"");
-        sb.AppendLine();
-        sb.AppendLine($"{indent}            if ($script.TriggerType -eq \"Startup\") {{");
-        sb.AppendLine($"{indent}                $trigger = New-ScheduledTaskTrigger -AtStartup");
-        sb.AppendLine($"{indent}            }} else {{");
-        sb.AppendLine($"{indent}                $trigger = New-ScheduledTaskTrigger -AtLogon");
-        sb.AppendLine($"{indent}            }}");
-        sb.AppendLine();
-        sb.AppendLine($"{indent}            $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0");
-        sb.AppendLine($"{indent}            $principal = New-ScheduledTaskPrincipal -UserId \"SYSTEM\" -LogonType ServiceAccount -RunLevel Highest");
-        sb.AppendLine();
-        sb.AppendLine($"{indent}            Register-ScheduledTask -TaskName $script.Name -TaskPath \"\\\" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null");
-        sb.AppendLine($"{indent}            Write-Log \"Registered scheduled task: $($script.Name)\" \"SUCCESS\"");
-        sb.AppendLine($"{indent}        }} catch {{");
-        sb.AppendLine($"{indent}            Write-Log \"Failed to register task $($script.Name): $($_.Exception.Message)\" \"ERROR\"");
         sb.AppendLine($"{indent}        }}");
         sb.AppendLine($"{indent}    }}");
         sb.AppendLine($"{indent}}}");
@@ -169,29 +149,6 @@ internal class AppRemovalScriptSection
         sb.AppendLine($"{indent}    Write-Log \"Created: {scriptName}.ps1\" \"SUCCESS\"");
         sb.AppendLine($"{indent}}} catch {{");
         sb.AppendLine($"{indent}    Write-Log \"Failed to create {scriptName}.ps1: $($_.Exception.Message)\" \"ERROR\"");
-        sb.AppendLine($"{indent}}}");
-        sb.AppendLine();
-    }
-
-    public void AppendInstallerScriptContent(StringBuilder sb, string indent = "")
-    {
-        sb.AppendLine($"{indent}# Create desktop shortcut for  installer");
-        sb.AppendLine($"{indent}try {{");
-        sb.AppendLine($"{indent}    $shortcutPath = \"C:\\Users\\Default\\Desktop\\Install .lnk\"");
-        sb.AppendLine($"{indent}    $WshShell = New-Object -ComObject WScript.Shell");
-        sb.AppendLine($"{indent}    $shortcut = $WshShell.CreateShortcut($shortcutPath)");
-        sb.AppendLine($"{indent}    $shortcut.TargetPath = \"{ScriptPaths.PowerShellExePath}\"");
-        sb.AppendLine($"{indent}    $shortcut.Arguments = \"-ExecutionPolicy Bypass -NoProfile -Command `\"irm 'https://get..net' | iex`\"\"");
-        sb.AppendLine($"{indent}    $shortcut.IconLocation = \"C:\\Windows\\System32\\appwiz.cpl,0\"");
-        sb.AppendLine($"{indent}    $shortcut.WorkingDirectory = \"C:\\Windows\\System32\"");
-        sb.AppendLine($"{indent}    $shortcut.Description = \"Download and install  from GitHub\"");
-        sb.AppendLine($"{indent}    $shortcut.Save()");
-        sb.AppendLine($"{indent}    $bytes = [System.IO.File]::ReadAllBytes($shortcutPath)");
-        sb.AppendLine($"{indent}    $bytes[21] = 34");
-        sb.AppendLine($"{indent}    [System.IO.File]::WriteAllBytes($shortcutPath, $bytes)");
-        sb.AppendLine($"{indent}    Write-Log \"Created desktop shortcut: $shortcutPath\" \"SUCCESS\"");
-        sb.AppendLine($"{indent}}} catch {{");
-        sb.AppendLine($"{indent}    Write-Log \"Failed to create desktop shortcut: $($_.Exception.Message)\" \"ERROR\"");
         sb.AppendLine($"{indent}}}");
         sb.AppendLine();
     }

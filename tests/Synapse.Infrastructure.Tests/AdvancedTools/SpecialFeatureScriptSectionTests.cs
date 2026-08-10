@@ -8,67 +8,6 @@ namespace Synapse.Infrastructure.Tests.AdvancedTools;
 public class SpecialFeatureScriptSectionTests
 {
     // ---------------------------------------------------------------
-    // AppendUserCustomizationsScheduledTask
-    // ---------------------------------------------------------------
-
-    [Fact]
-    public void AppendUserCustomizationsScheduledTask_ContainsSectionHeader()
-    {
-        var sb = new StringBuilder();
-
-        SpecialFeatureScriptSection.AppendUserCustomizationsScheduledTask(sb, "    ");
-
-        var output = sb.ToString();
-        output.Should().Contain("USER CUSTOMIZATIONS SCHEDULED TASK");
-    }
-
-    [Fact]
-    public void AppendUserCustomizationsScheduledTask_ContainsTaskRegistration()
-    {
-        var sb = new StringBuilder();
-
-        SpecialFeatureScriptSection.AppendUserCustomizationsScheduledTask(sb, "    ");
-
-        var output = sb.ToString();
-        output.Should().Contain("Register-ScheduledTask");
-        output.Should().Contain("UserCustomizations");
-    }
-
-    [Fact]
-    public void AppendUserCustomizationsScheduledTask_ContainsScriptPath()
-    {
-        var sb = new StringBuilder();
-
-        SpecialFeatureScriptSection.AppendUserCustomizationsScheduledTask(sb, "    ");
-
-        sb.ToString().Should().Contain("SynapseEnhancements.ps1");
-    }
-
-    [Fact]
-    public void AppendUserCustomizationsScheduledTask_ContainsErrorHandling()
-    {
-        var sb = new StringBuilder();
-
-        SpecialFeatureScriptSection.AppendUserCustomizationsScheduledTask(sb, "    ");
-
-        var output = sb.ToString();
-        output.Should().Contain("try {");
-        output.Should().Contain("} catch {");
-    }
-
-    [Fact]
-    public void AppendUserCustomizationsScheduledTask_UsesCorrectIndent()
-    {
-        var sb = new StringBuilder();
-
-        SpecialFeatureScriptSection.AppendUserCustomizationsScheduledTask(sb, "        ");
-
-        var output = sb.ToString();
-        output.Should().Contain("        Write-Log");
-        output.Should().Contain("        try {");
-    }
-
-    // ---------------------------------------------------------------
     // AppendCleanStartMenuSection
     // ---------------------------------------------------------------
 
