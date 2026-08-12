@@ -11,11 +11,32 @@ namespace Synapse.Infrastructure.Features.ControlCenter.Services;
 public sealed class DeepUninstallService : IDeepUninstallService
 {
     private readonly ISystemBackupService _backupService;
+    private readonly SemaphoreSlim _applicationsGate = new(1, 1);
+    private IReadOnlyList<InstalledApplication>? _cachedApplications;
+    private DateTimeOffset _applicationsCachedAt;
 
     public DeepUninstallService(ISystemBackupService backupService) => _backupService = backupService;
 
-    public Task<IReadOnlyList<InstalledApplication>> GetInstalledApplicationsAsync(CancellationToken cancellationToken = default) =>
-        Task.Run<IReadOnlyList<InstalledApplication>>(() => EnumerateApplications(cancellationToken), cancellationToken);
+    public async Task<IReadOnlyList<InstalledApplication>> GetInstalledApplicationsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_cachedApplications is { } cached
+            && DateTimeOffset.UtcNow - _applicationsCachedAt < TimeSpan.FromSeconds(30))
+            return cached;
+
+        await _applicationsGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cachedApplications is { } refreshed
+                && DateTimeOffset.UtcNow - _applicationsCachedAt < TimeSpan.FromSeconds(30))
+                return refreshed;
+
+            _cachedApplications = await Task.Run<IReadOnlyList<InstalledApplication>>(
+                () => EnumerateApplications(cancellationToken), cancellationToken).ConfigureAwait(false);
+            _applicationsCachedAt = DateTimeOffset.UtcNow;
+            return _cachedApplications;
+        }
+        finally { _applicationsGate.Release(); }
+    }
 
     public async Task<DeepUninstallPlan> AnalyzeAsync(string applicationId, CancellationToken cancellationToken = default)
     {
@@ -44,6 +65,8 @@ public sealed class DeepUninstallService : IDeepUninstallService
             await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
             if (process.ExitCode != 0 && process.ExitCode != 3010)
                 return OperationResult.Failure($"Le désinstalleur a retourné le code {process.ExitCode}. Aucun résidu n’a été supprimé.");
+            _cachedApplications = null;
+            _applicationsCachedAt = default;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {

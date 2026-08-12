@@ -35,7 +35,7 @@ internal static class PageScrollHelper
     /// jumping all the way to the end.
     /// </summary>
     private const double PageStepFraction = 0.85;
-    private const double WheelPixelsPerNotch = 180;
+    private const double WheelPixelsPerNotch = 320;
 
     /// <summary>
     /// Attaches fast-scroll handling to <paramref name="keyEventSource"/> for the
@@ -68,6 +68,20 @@ internal static class PageScrollHelper
             handledEventsToo: true);
     }
 
+    /// <summary>
+    /// Applies the same accelerated wheel behavior to classic ScrollViewer hosts.
+    /// Control Center uses these because its pages contain nested virtualized lists.
+    /// </summary>
+    public static void Attach(UIElement eventSource, ScrollViewer scrollViewer)
+    {
+        if (eventSource == null || scrollViewer == null) return;
+
+        eventSource.AddHandler(
+            UIElement.PointerWheelChangedEvent,
+            new PointerEventHandler((s, e) => HandleWheel(scrollViewer, e)),
+            handledEventsToo: true);
+    }
+
     public static void HandleWheel(ScrollView scrollView, PointerRoutedEventArgs e)
     {
         if (scrollView == null || e == null || scrollView.ScrollableHeight <= 0) return;
@@ -79,6 +93,23 @@ internal static class PageScrollHelper
 
         scrollView.ScrollBy(0, CalculateWheelOffset(properties.MouseWheelDelta),
             new ScrollingScrollOptions(ScrollingAnimationMode.Disabled));
+        e.Handled = true;
+    }
+
+    public static void HandleWheel(ScrollViewer scrollViewer, PointerRoutedEventArgs e)
+    {
+        if (scrollViewer == null || e == null || scrollViewer.ScrollableHeight <= 0) return;
+        if ((e.KeyModifiers & VirtualKeyModifiers.Control) != 0) return;
+        if (ShouldSkipForFocusedElement(e.OriginalSource as DependencyObject, scrollViewer)) return;
+
+        var properties = e.GetCurrentPoint(scrollViewer).Properties;
+        if (properties.IsHorizontalMouseWheel || properties.MouseWheelDelta == 0) return;
+
+        var target = Math.Clamp(
+            scrollViewer.VerticalOffset + CalculateWheelOffset(properties.MouseWheelDelta),
+            0,
+            scrollViewer.ScrollableHeight);
+        scrollViewer.ChangeView(null, target, null, disableAnimation: true);
         e.Handled = true;
     }
 
@@ -145,16 +176,25 @@ internal static class PageScrollHelper
     /// outer ScrollView never sees the event.
     /// </summary>
     internal static bool ShouldSkipForFocusedElement(DependencyObject? focused, ScrollView scrollViewHost)
+        => ShouldSkipForFocusedElementCore(focused, scrollViewHost);
+
+    internal static bool ShouldSkipForFocusedElement(DependencyObject? focused, ScrollViewer scrollViewerHost)
+        => ShouldSkipForFocusedElementCore(focused, scrollViewerHost);
+
+    private static bool ShouldSkipForFocusedElementCore(DependencyObject? focused, DependencyObject scrollHost)
     {
         for (var current = focused; current != null; current = VisualTreeHelper.GetParent(current))
         {
-            // Classic ScrollViewer — skip past it if vertical scrolling is disabled.
-            if (current is ScrollViewer svr && svr.VerticalScrollMode != ScrollMode.Disabled)
+            // Nested scrolling surfaces keep ownership of the wheel. The requested
+            // host itself is excluded so ordinary page scrolling is accelerated.
+            if (current is ScrollViewer svr
+                && !ReferenceEquals(svr, scrollHost)
+                && svr.VerticalScrollMode != ScrollMode.Disabled)
                 return true;
 
             // WinUI 3 ScrollView — same deal, and don't claim the host as "nested".
             if (current is ScrollView sv
-                && !ReferenceEquals(sv, scrollViewHost)
+                && !ReferenceEquals(sv, scrollHost)
                 && sv.VerticalScrollMode != ScrollingScrollMode.Disabled)
                 return true;
 

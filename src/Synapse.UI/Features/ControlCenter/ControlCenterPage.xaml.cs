@@ -26,7 +26,7 @@ public sealed partial class ControlCenterPage : Page
     private readonly IDeepUninstallService _uninstaller = App.Services.GetRequiredService<IDeepUninstallService>();
     private readonly ISystemDiagnosticsService _diagnostics = App.Services.GetRequiredService<ISystemDiagnosticsService>();
     private readonly IPerformanceModeService _performance = App.Services.GetRequiredService<IPerformanceModeService>();
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(3) };
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(5) };
     private DeepUninstallPlan? _uninstallPlan;
     private IReadOnlyList<DiagnosticCheckResult> _lastDiagnosticChecks = Array.Empty<DiagnosticCheckResult>();
     private readonly Dictionary<string, Control> _gameTuningInputs = new(StringComparer.OrdinalIgnoreCase);
@@ -38,6 +38,8 @@ public sealed partial class ControlCenterPage : Page
     private bool _pageLoaded;
     private bool _telemetryRefreshInProgress;
     private TaskManagerSnapshot? _latestTaskSnapshot;
+    private bool _taskApplicationsLoaded;
+    private readonly HashSet<ScrollViewer> _acceleratedScrollHosts = [];
 
     public ControlCenterPage()
     {
@@ -83,7 +85,7 @@ public sealed partial class ControlCenterPage : Page
                     await LoadApplicationsAsync();
                     break;
                 case "TaskManager":
-                    await Task.WhenAll(RefreshTaskManagerAsync(), LoadApplicationsAsync());
+                    await RefreshTaskManagerAsync();
                     break;
             }
         }
@@ -94,7 +96,13 @@ public sealed partial class ControlCenterPage : Page
         }
     }
 
-    private async void TelemetryTimer_Tick(object? sender, object e) => await RefreshTelemetryAsync();
+    private async void TelemetryTimer_Tick(object? sender, object e)
+    {
+        if (App.MainWindow?.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter
+            { State: Microsoft.UI.Windowing.OverlappedPresenterState.Minimized })
+            return;
+        await RefreshTelemetryAsync();
+    }
 
     private async Task RefreshTelemetryAsync()
     {
@@ -522,8 +530,15 @@ public sealed partial class ControlCenterPage : Page
     private async Task LoadApplicationsAsync()
     {
         var applications = await _uninstaller.GetInstalledApplicationsAsync();
-        AppsPicker.ItemsSource = applications;
-        TaskApplicationsList.ItemsSource = applications;
+        // These controls live in independent x:Load views. The previous code
+        // always touched both, which caused the intermittent NullReference shown
+        // in the InfoBar whenever only one category had been materialized.
+        if (AppsPicker is not null) AppsPicker.ItemsSource = applications;
+        if (TaskApplicationsList is not null)
+        {
+            TaskApplicationsList.ItemsSource = applications;
+            _taskApplicationsLoaded = true;
+        }
     }
 
     private void AppsPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -715,6 +730,7 @@ public sealed partial class ControlCenterPage : Page
             _loadedViews[category] = loadedView;
         }
         if (activeView is not null) activeView.Visibility = Visibility.Visible;
+        AttachAcceleratedScroll(category);
         if (category == "Hardware") _timer.Start(); else _timer.Stop();
         if (_pageLoaded) _ = EnsureCategoryLoadedAsync(category);
 
@@ -737,20 +753,61 @@ public sealed partial class ControlCenterPage : Page
             CategoryNavigationView.SelectedItem = item;
     }
 
+    private void AttachAcceleratedScroll(string category)
+    {
+        if (FindName(category + "ScrollViewer") is not ScrollViewer scrollViewer) return;
+        if (!_acceleratedScrollHosts.Add(scrollViewer)) return;
+        PageScrollHelper.Attach(this, scrollViewer);
+    }
+
     private async Task RefreshTaskManagerAsync()
     {
-        _latestTaskSnapshot = await _taskManager.CollectAsync();
-        TaskProcessesList.ItemsSource = _latestTaskSnapshot.Processes;
-        StartupItemsList.ItemsSource = _latestTaskSnapshot.StartupItems;
-        WindowsServicesList.ItemsSource = _latestTaskSnapshot.Services;
-        ProcessCountText.Text = $"{_latestTaskSnapshot.Processes.Count} processus · {_latestTaskSnapshot.Processes.Sum(process => process.MemoryBytes) / 1024d / 1024d / 1024d:0.0} Go de mémoire";
+        switch (TaskManagerTabView?.SelectedIndex ?? 0)
+        {
+            case 1:
+                await LoadTaskApplicationsAsync();
+                break;
+            case 2:
+                if (StartupItemsList is not null)
+                    StartupItemsList.ItemsSource = await _taskManager.CollectStartupItemsAsync();
+                break;
+            case 3:
+                if (WindowsServicesList is not null)
+                    WindowsServicesList.ItemsSource = await _taskManager.CollectServicesAsync();
+                break;
+            default:
+                var processes = await _taskManager.CollectProcessesAsync();
+                if (TaskProcessesList is not null) TaskProcessesList.ItemsSource = processes;
+                if (ProcessCountText is not null)
+                    ProcessCountText.Text = $"{processes.Count} processus · {processes.Sum(process => process.MemoryBytes) / 1024d / 1024d / 1024d:0.0} Go de mémoire";
+                break;
+        }
+    }
+
+    private async Task LoadTaskApplicationsAsync()
+    {
+        if (_taskApplicationsLoaded || TaskApplicationsList is null) return;
+        TaskApplicationsList.ItemsSource = await _uninstaller.GetInstalledApplicationsAsync();
+        _taskApplicationsLoaded = true;
+    }
+
+    private async void TaskManagerTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_pageLoaded || _requestedCategory != "TaskManager") return;
+        try { await RefreshTaskManagerAsync(); }
+        catch (Exception ex)
+        {
+            if (TaskManagerStatusText is not null)
+                TaskManagerStatusText.Text = $"Chargement de cet onglet impossible : {ex.Message}";
+        }
     }
 
     private async void RefreshTaskManagerButton_Click(object sender, RoutedEventArgs e)
     {
-        TaskManagerStatusText.Text = "Actualisation des processus, du démarrage et des services…";
-        await Task.WhenAll(RefreshTaskManagerAsync(), LoadApplicationsAsync());
-        TaskManagerStatusText.Text = "Données Windows actualisées.";
+        TaskManagerStatusText.Text = "Actualisation de l’onglet sélectionné…";
+        _taskApplicationsLoaded = false;
+        await RefreshTaskManagerAsync();
+        TaskManagerStatusText.Text = "Onglet actualisé.";
     }
 
     private async void StartupItemToggle_Toggled(object sender, RoutedEventArgs e)

@@ -39,9 +39,9 @@ public class PageScrollHelperTests
     }
 
     [Theory]
-    [InlineData(120, -180)]
-    [InlineData(-120, 180)]
-    [InlineData(240, -360)]
+    [InlineData(120, -320)]
+    [InlineData(-120, 320)]
+    [InlineData(240, -640)]
     [InlineData(0, 0)]
     public void CalculateWheelOffset_AcceleratesAndPreservesDirection(int delta, double expected)
     {

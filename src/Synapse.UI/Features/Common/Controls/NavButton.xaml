@@ -58,7 +58,7 @@
                        TextTrimming="CharacterEllipsis"
                        MaxLines="2"
                        TextAlignment="Center"
-                       MaxWidth="60"
+                       MaxWidth="80"
                        HorizontalAlignment="Center"
                        Visibility="{x:Bind TextVisibility, Mode=OneWay}"/>
         </StackPanel>
