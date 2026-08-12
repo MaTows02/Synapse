@@ -45,8 +45,8 @@ public class SafeFeatureIntegrationTests
 
         settings.SelectMany(setting => setting.RegistrySettings)
             .Should().OnlyContain(registrySetting =>
-                registrySetting.EnabledValue is { Length: > 0 } &&
-                registrySetting.DisabledValue is { Length: > 0 });
+                registrySetting.EnabledValue != null && registrySetting.EnabledValue.Length > 0 &&
+                registrySetting.DisabledValue != null && registrySetting.DisabledValue.Length > 0);
     }
 
     [Fact]
