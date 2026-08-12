@@ -10,7 +10,7 @@
                 <Grid ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Border Width="64" Height="64" CornerRadius="18" Background="#1835C7F4">
-                        <Image Source="ms-appx:///Assets/AppIcons/Synapse-rocket-white-transparent-bg.png" Width="40" Height="40"/>
+                        <Image Source="{ThemeResource SynapseMonochromeLogo}" Width="40" Height="40"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
                         <TextBlock Text="Tableau de bord" FontSize="30" FontWeight="SemiBold"/>

@@ -15,6 +15,9 @@ public interface IHardwareInventoryService
 public interface ITaskManagerService
 {
     Task<TaskManagerSnapshot> CollectAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TaskProcessInfo>> CollectProcessesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StartupItemInfo>> CollectStartupItemsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<WindowsServiceInfo>> CollectServicesAsync(CancellationToken cancellationToken = default);
     Task<OperationResult> TerminateProcessAsync(int processId, CancellationToken cancellationToken = default);
     Task<OperationResult> RestartProcessAsync(int processId, CancellationToken cancellationToken = default);
     Task<OperationResult> SetStartupItemEnabledAsync(string itemId, bool enabled, CancellationToken cancellationToken = default);

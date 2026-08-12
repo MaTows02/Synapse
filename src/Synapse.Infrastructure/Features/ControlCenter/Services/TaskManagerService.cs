@@ -24,39 +24,74 @@ public sealed class TaskManagerService : ITaskManagerService
     };
 
     private static readonly ConcurrentDictionary<string, string> DescriptionCache = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly TimeSpan SnapshotLifetime = TimeSpan.FromMilliseconds(900);
-    private readonly SemaphoreSlim _collectionGate = new(1, 1);
-    private TaskManagerSnapshot? _cachedSnapshot;
-    private DateTimeOffset _cachedAt;
+    private static readonly TimeSpan SnapshotLifetime = TimeSpan.FromSeconds(3);
+    private readonly SemaphoreSlim _processGate = new(1, 1);
+    private readonly SemaphoreSlim _startupGate = new(1, 1);
+    private readonly SemaphoreSlim _serviceGate = new(1, 1);
+    private IReadOnlyList<TaskProcessInfo>? _cachedProcesses;
+    private IReadOnlyList<StartupItemInfo>? _cachedStartupItems;
+    private IReadOnlyList<WindowsServiceInfo>? _cachedServices;
+    private DateTimeOffset _processesCachedAt;
+    private DateTimeOffset _startupCachedAt;
+    private DateTimeOffset _servicesCachedAt;
 
     public async Task<TaskManagerSnapshot> CollectAsync(CancellationToken cancellationToken = default)
     {
-        var cached = _cachedSnapshot;
-        if (cached is not null && DateTimeOffset.UtcNow - _cachedAt < SnapshotLifetime)
-            return cached;
+        var processesTask = CollectProcessesAsync(cancellationToken);
+        var startupTask = CollectStartupItemsAsync(cancellationToken);
+        var servicesTask = CollectServicesAsync(cancellationToken);
+        await Task.WhenAll(processesTask, startupTask, servicesTask).ConfigureAwait(false);
+        return new TaskManagerSnapshot(
+            DateTimeOffset.Now,
+            await processesTask.ConfigureAwait(false),
+            await startupTask.ConfigureAwait(false),
+            await servicesTask.ConfigureAwait(false));
+    }
 
-        await _collectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+    public async Task<IReadOnlyList<TaskProcessInfo>> CollectProcessesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_cachedProcesses is { } cached && IsFresh(_processesCachedAt)) return cached;
+        await _processGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            cached = _cachedSnapshot;
-            if (cached is not null && DateTimeOffset.UtcNow - _cachedAt < SnapshotLifetime)
-                return cached;
-
-            var snapshot = await Task.Run(() => new TaskManagerSnapshot(
-                DateTimeOffset.Now,
-                CollectProcesses(cancellationToken),
-                CollectStartupItems(),
-                CollectServices(cancellationToken)), cancellationToken).ConfigureAwait(false);
-
-            _cachedSnapshot = snapshot;
-            _cachedAt = DateTimeOffset.UtcNow;
-            return snapshot;
+            if (_cachedProcesses is { } refreshed && IsFresh(_processesCachedAt)) return refreshed;
+            _cachedProcesses = await Task.Run(() => CollectProcesses(cancellationToken), cancellationToken).ConfigureAwait(false);
+            _processesCachedAt = DateTimeOffset.UtcNow;
+            return _cachedProcesses;
         }
-        finally
-        {
-            _collectionGate.Release();
-        }
+        finally { _processGate.Release(); }
     }
+
+    public async Task<IReadOnlyList<StartupItemInfo>> CollectStartupItemsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_cachedStartupItems is { } cached && IsFresh(_startupCachedAt)) return cached;
+        await _startupGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cachedStartupItems is { } refreshed && IsFresh(_startupCachedAt)) return refreshed;
+            _cachedStartupItems = await Task.Run(CollectStartupItems, cancellationToken).ConfigureAwait(false);
+            _startupCachedAt = DateTimeOffset.UtcNow;
+            return _cachedStartupItems;
+        }
+        finally { _startupGate.Release(); }
+    }
+
+    public async Task<IReadOnlyList<WindowsServiceInfo>> CollectServicesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_cachedServices is { } cached && IsFresh(_servicesCachedAt)) return cached;
+        await _serviceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cachedServices is { } refreshed && IsFresh(_servicesCachedAt)) return refreshed;
+            _cachedServices = await Task.Run(() => CollectServices(cancellationToken), cancellationToken).ConfigureAwait(false);
+            _servicesCachedAt = DateTimeOffset.UtcNow;
+            return _cachedServices;
+        }
+        finally { _serviceGate.Release(); }
+    }
+
+    private static bool IsFresh(DateTimeOffset cachedAt) =>
+        DateTimeOffset.UtcNow - cachedAt < SnapshotLifetime;
 
     public Task<OperationResult> TerminateProcessAsync(int processId, CancellationToken cancellationToken = default) => Task.Run(() =>
     {
@@ -225,8 +260,12 @@ public sealed class TaskManagerService : ITaskManagerService
 
     private void InvalidateSnapshot()
     {
-        _cachedSnapshot = null;
-        _cachedAt = default;
+        _cachedProcesses = null;
+        _cachedStartupItems = null;
+        _cachedServices = null;
+        _processesCachedAt = default;
+        _startupCachedAt = default;
+        _servicesCachedAt = default;
     }
 
     private static IReadOnlyList<TaskProcessInfo> CollectProcesses(CancellationToken cancellationToken)

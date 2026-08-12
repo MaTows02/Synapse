@@ -8,8 +8,7 @@ using Synapse.Core.Features.Common.Interfaces;
 using Synapse.Core.Features.Common.Models;
 using Synapse.Core.Features.Common.Services;
 using Synapse.UI.Features.Common.Controls;
-using Synapse.UI.Features.SoftwareApps;
-using Synapse.UI.Features.ControlCenter;
+using Synapse.UI.Features.Dashboard;
 using Synapse.UI.ViewModels;
 using System;
 using System.Threading;
@@ -166,7 +165,7 @@ internal sealed class StartupUiCoordinator
     }
 
     /// <summary>
-    /// Navigates to SoftwareApps, waits for initialization, then hides the loading overlay.
+    /// Shows the dashboard immediately. Feature pages initialize themselves on demand.
     /// </summary>
     private async Task CompleteStartupAsync(
         Frame contentFrame,
@@ -177,38 +176,10 @@ internal sealed class StartupUiCoordinator
     {
         StartupLogger.Log("StartupUiCoordinator", "CompleteStartupAsync starting");
 
-        try
-        {
-            // Navigate to SoftwareApps with "startup" parameter to prevent double-init
-            navSidebar.SelectedTag = "SoftwareApps";
-            contentFrame.Navigate(typeof(SoftwareAppsPage), "startup");
-
-            // Block startup on Windows Apps only — those icons resolve fast (mostly
-            // local AppX). External Apps icon resolution hits Wikimedia, which can
-            // take tens of seconds on a cold burst; we kick that off in the
-            // background so the main window appears promptly. The External Apps
-            // tab has its own loading overlay (bound to ExternalAppsViewModel.IsLoading)
-            // that covers the user-clicks-tab-before-ready case.
-            var page = contentFrame.Content as SoftwareAppsPage;
-            if (page != null)
-            {
-                StartupLogger.Log("StartupUiCoordinator", "Awaiting Windows Apps initialization...");
-                await page.ViewModel.InitializeWindowsAppsAsync();
-                StartupLogger.Log("StartupUiCoordinator", "Windows Apps initialization complete");
-
-                StartupLogger.Log("StartupUiCoordinator", "Kicking off External Apps initialization in background");
-                page.ViewModel.InitializeExternalAppsAsync().FireAndForget(_logService!);
-            }
-        }
-        catch (Exception ex)
-        {
-            StartupLogger.Log("StartupUiCoordinator", $"SoftwareApps initialization failed: {ex.Message}");
-            _logService?.LogWarning($"SoftwareApps init failed: {ex.Message}");
-        }
-
-        // Hide overlay and mark startup complete
+        // Do not build the Software Apps page or resolve thousands of icons before
+        // the user can interact with the window. Each feature initializes on demand.
         navSidebar.SelectedTag = "Dashboard";
-        contentFrame.Navigate(typeof(ControlCenterPage));
+        contentFrame.Navigate(typeof(DashboardPage));
         markStartupComplete();
         loadingOverlay.Visibility = Visibility.Collapsed;
         StartupLogger.Log("StartupUiCoordinator", "Startup complete, overlay hidden");

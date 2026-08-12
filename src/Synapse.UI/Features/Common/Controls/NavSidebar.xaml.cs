@@ -18,7 +18,7 @@ namespace Synapse.UI.Features.Common.Controls;
 public sealed partial class NavSidebar : UserControl, INotifyPropertyChanged
 {
     // Sidebar dimensions (matching NavigationView defaults)
-    private const double ExpandedWidth = 80;
+    private const double ExpandedWidth = 96;
     private const double CompactWidth = 48;
 
     public event PropertyChangedEventHandler? PropertyChanged;

@@ -5,7 +5,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:models="using:Synapse.Core.Features.ControlCenter.Models"
     xmlns:controls="using:Synapse.UI.Features.Common.Controls"
-    Background="Transparent">
+    Background="Transparent"
+    NavigationCacheMode="Required">
 
     <Page.Resources>
         <SolidColorBrush x:Key="SynapseCyanBrush" Color="#FF35C7F4"/>
@@ -91,7 +92,7 @@
             <StackPanel Margin="14,18,14,14" Spacing="3">
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Border Width="38" Height="38" CornerRadius="11" Background="{StaticResource SoftCyanBrush}">
-                        <Image Source="ms-appx:///Assets/AppIcons/Synapse-rocket-white-transparent-bg.png" Width="24" Height="24"/>
+                        <Image Source="{ThemeResource SynapseMonochromeLogo}" Width="24" Height="24"/>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="SYNAPSE" FontSize="18" FontWeight="Bold" CharacterSpacing="120"/>
@@ -165,7 +166,7 @@
 
             <Grid Grid.Row="1">
                 <Grid x:Name="GameBoosterView" x:Load="False">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="GameBoosterScrollViewer" VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
                                 <Border.Background>
@@ -362,7 +363,7 @@
                 </Grid>
 
                 <Grid x:Name="HardwareView" x:Load="False" Visibility="Collapsed">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="HardwareScrollViewer" VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
                                 <Border.Background>
@@ -513,7 +514,7 @@
                 </Grid>
 
                 <Grid x:Name="DeepCleanupView" x:Load="False" Visibility="Collapsed">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="DeepCleanupScrollViewer" VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
                                 <Border.Background>
@@ -551,7 +552,7 @@
                 </Grid>
 
                 <Grid x:Name="SystemHealthView" x:Load="False" Visibility="Collapsed">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="SystemHealthScrollViewer" VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14" Padding="0,0,6,18">
                             <Border Style="{StaticResource HeroCardStyle}" Padding="0">
                                 <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#29287B5C" Offset="0"/><GradientStop Color="#161C2A28" Offset="0.55"/><GradientStop Color="#1621D487" Offset="1"/></LinearGradientBrush></Border.Background>
@@ -582,7 +583,7 @@
                             <Grid Padding="24" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="6"><TextBlock Text="GESTIONNAIRE DES TÂCHES" Style="{StaticResource EyebrowStyle}"/><TextBlock Text="Tout ce qui tourne sur ton PC." Style="{StaticResource PageTitleStyle}"/><TextBlock Text="Processus en cours, logiciels installés, démarrage automatique et services Windows dans une interface unique." Style="{StaticResource MutedTextStyle}" MaxWidth="760"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="Ouvrir le Gestionnaire Windows" Click="OpenWindowsTaskManagerButton_Click"/><Button Content="Actualiser" Style="{StaticResource AccentButtonStyle}" Click="RefreshTaskManagerButton_Click"/></StackPanel></Grid>
                         </Border>
 
-                        <TabView x:Name="TaskManagerTabView" IsAddTabButtonVisible="False">
+                        <TabView x:Name="TaskManagerTabView" IsAddTabButtonVisible="False" SelectionChanged="TaskManagerTabView_SelectionChanged">
                             <TabViewItem Header="Processus">
                                 <Grid Padding="0,12,4,4"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid Margin="0,0,0,10"><StackPanel><TextBlock Text="PROCESSUS ACTIFS" FontSize="11" FontWeight="SemiBold" CharacterSpacing="110" Opacity="0.55"/><TextBlock x:Name="ProcessCountText" Text="Chargement…" Style="{StaticResource SectionTitleStyle}"/></StackPanel></Grid><Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="0"><ListView x:Name="TaskProcessesList" SelectionMode="Extended" RightTapped="TaskProcessesList_RightTapped"><ListView.ContextFlyout><MenuFlyout><MenuFlyoutItem Text="Arrêter" Click="EndTaskButton_Click"/><MenuFlyoutItem Text="Redémarrer" Click="RestartTaskMenuItem_Click"/><MenuFlyoutSeparator/><MenuFlyoutItem Text="Ouvrir l’emplacement du fichier" Click="OpenProcessLocationMenuItem_Click"/></MenuFlyout></ListView.ContextFlyout><ListView.ItemTemplate><DataTemplate x:DataType="models:TaskProcessInfo"><Grid Padding="12" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="46"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="120"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions><controls:ExecutableIcon ExecutablePath="{x:Bind ExecutablePath}" Width="40" Height="40"/><StackPanel Grid.Column="1"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"/><TextBlock Text="{x:Bind Description}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind Id}" VerticalAlignment="Center" Opacity="0.65"/><TextBlock Grid.Column="3" Text="{x:Bind MemoryDisplay}" VerticalAlignment="Center"/><TextBlock Grid.Column="4" Text="{x:Bind Status}" VerticalAlignment="Center"/></Grid></DataTemplate></ListView.ItemTemplate></ListView></Border><Grid Grid.Row="2" Margin="0,10,0,0"><TextBlock x:Name="TaskManagerStatusText" Text="Sélectionne un ou plusieurs processus, puis utilise le clic droit." VerticalAlignment="Center" Opacity="0.6"/><Button Content="Terminer la tâche" HorizontalAlignment="Right" Click="EndTaskButton_Click"/></Grid></Grid>
                             </TabViewItem>

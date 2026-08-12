@@ -463,18 +463,20 @@
               Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
               Visibility="Visible"
               AutomationProperties.LiveSetting="Polite">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="24">
-                <!-- Logo + Branding -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
-                    <Image x:Name="LoadingLogo" Width="128" Height="128" VerticalAlignment="Center"/>
-                    <StackPanel VerticalAlignment="Center" Spacing="-4">
-                        <TextBlock x:Name="LoadingTitleText"
-                                   FontSize="80"
-                                   FontWeight="Bold"/>
-                        <TextBlock x:Name="LoadingTaglineText"
-                                   FontSize="16"
-                                   Opacity="0.7"/>
-                    </StackPanel>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="18">
+                <Image x:Name="LoadingLogo"
+                       Width="112" Height="112"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+                <StackPanel HorizontalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="LoadingTitleText"
+                               HorizontalAlignment="Center"
+                               FontSize="64"
+                               FontWeight="Bold"/>
+                    <TextBlock x:Name="LoadingTaglineText"
+                               HorizontalAlignment="Center"
+                               FontSize="16"
+                               Opacity="0.7"/>
                 </StackPanel>
 
                 <!-- Status + Spinner -->

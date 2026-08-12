@@ -21,7 +21,7 @@ namespace Synapse.UI.Features.Common.Controls;
 public sealed partial class NavButton : UserControl, INotifyPropertyChanged
 {
     // Expanded dimensions
-    private const double ExpandedWidth = 70;
+    private const double ExpandedWidth = 86;
     private const double ExpandedHeight = 60;
 
     // Compact dimensions (matching NavigationView items)

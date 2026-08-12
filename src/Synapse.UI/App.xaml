@@ -7,6 +7,14 @@
     xmlns:resources="using:Synapse.UI.Features.Common.Resources">
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <BitmapImage x:Key="SynapseMonochromeLogo" UriSource="ms-appx:///Assets/AppIcons/Synapse-rocket-black-transparent-bg.png"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <BitmapImage x:Key="SynapseMonochromeLogo" UriSource="ms-appx:///Assets/AppIcons/Synapse-rocket-white-transparent-bg.png"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
             <ResourceDictionary.MergedDictionaries>
                 <!-- WinUI 3 native controls resources -->
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
