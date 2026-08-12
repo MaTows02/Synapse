@@ -2449,6 +2449,270 @@ public static class PrivacyAndSecurityOptimizations
                     },
                 },
                 // =====================
+                // Browser Controls
+                // =====================
+                new SettingDefinition
+                {
+                    Id = "privacy-edge-startup-boost",
+                    Name = "Edge Startup Boost",
+                    Description = "Controls whether Microsoft Edge keeps background processes ready after sign-in so the browser starts faster",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "RocketLaunch",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "StartupBoostEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-edge-recommendations",
+                    Name = "Edge Recommendations and Promotions",
+                    Description = "Controls personalized recommendations, promotional tabs, and spotlight suggestions in Microsoft Edge",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "LightbulbOff",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "PersonalizationReportingEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "ShowRecommendationsEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "SpotlightExperiencesAndRecommendationsEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-edge-shopping-rewards",
+                    Name = "Edge Shopping, Rewards and Checkout",
+                    Description = "Controls shopping assistance, Microsoft Rewards, and the current Wallet checkout experience in Microsoft Edge",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "Wallet",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "EdgeShoppingAssistantEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "ShowMicrosoftRewards",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "EdgeWalletCheckoutEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-edge-diagnostics",
+                    Name = "Edge Optional Diagnostic Data",
+                    Description = "Controls optional Edge diagnostic data while keeping the required security, update, and reliability data enabled",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "ChartBox",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge",
+                            ValueName = "DiagnosticData",
+                            RecommendedValue = 1,
+                            EnabledValue = [2],
+                            DisabledValue = [0, 1, null],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-brave-rewards",
+                    Name = "Brave Rewards",
+                    Description = "Controls the Brave Rewards feature without uninstalling or modifying the browser",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "Wallet",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\BraveSoftware\Brave",
+                            ValueName = "BraveRewardsDisabled",
+                            RecommendedValue = 1,
+                            EnabledValue = [0, null],
+                            DisabledValue = [1],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-brave-wallet",
+                    Name = "Brave Wallet",
+                    Description = "Controls the built-in Brave Wallet without uninstalling or modifying the browser",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "Wallet",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\BraveSoftware\Brave",
+                            ValueName = "BraveWalletDisabled",
+                            RecommendedValue = 1,
+                            EnabledValue = [0, null],
+                            DisabledValue = [1],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-brave-ai-chat",
+                    Name = "Brave Leo AI Chat",
+                    Description = "Controls whether the built-in Leo AI chat is available in Brave",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "RobotOff",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\BraveSoftware\Brave",
+                            ValueName = "BraveAIChatEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-brave-stats-ping",
+                    Name = "Brave Usage Statistics",
+                    Description = "Controls whether Brave sends its periodic usage statistics ping",
+                    GroupName = "Browser Controls",
+                    AddedInVersion = "26.08.12",
+                    Icon = "ChartLine",
+                    InputType = InputType.Toggle,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\BraveSoftware\Brave",
+                            ValueName = "BraveStatsPingEnabled",
+                            RecommendedValue = 0,
+                            EnabledValue = [1, null],
+                            DisabledValue = [0],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                new SettingDefinition
+                {
+                    Id = "privacy-notepad-ai-features",
+                    Name = "Notepad AI Features",
+                    Description = "Controls AI-powered Rewrite features and their button in Windows Notepad",
+                    GroupName = "Windows AI",
+                    AddedInVersion = "26.08.12",
+                    Icon = "NotepadEdit",
+                    InputType = InputType.Toggle,
+                    IsWindows11Only = true,
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\WindowsNotepad",
+                            ValueName = "DisableAIFeatures",
+                            RecommendedValue = 1,
+                            EnabledValue = [0, null],
+                            DisabledValue = [1],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                            IsGroupPolicy = true,
+                        },
+                    },
+                },
+                // =====================
                 // Microsoft Edge AI
                 // =====================
                 new SettingDefinition
