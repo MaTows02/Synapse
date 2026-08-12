@@ -1521,6 +1521,26 @@
     "Default": null,
     "InputType": "Toggle"
   },
+  "privacy-brave-ai-chat": {
+    "Recommended": 0,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "privacy-brave-rewards": {
+    "Recommended": 1,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "privacy-brave-stats-ping": {
+    "Recommended": 0,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "privacy-brave-wallet": {
+    "Recommended": 1,
+    "Default": null,
+    "InputType": "Toggle"
+  },
   "privacy-camera-access": {
     "Recommended": "Allow",
     "Default": "Allow",
@@ -1681,6 +1701,11 @@
     "Default": null,
     "InputType": "Toggle"
   },
+  "privacy-edge-diagnostics": {
+    "Recommended": 1,
+    "Default": null,
+    "InputType": "Toggle"
+  },
   "privacy-edge-entra-copilot": {
     "Recommended": 0,
     "Default": null,
@@ -1701,7 +1726,22 @@
     "Default": null,
     "InputType": "Toggle"
   },
+  "privacy-edge-recommendations": {
+    "Recommended": 0,
+    "Default": null,
+    "InputType": "Toggle"
+  },
   "privacy-edge-share-history-copilot": {
+    "Recommended": 0,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "privacy-edge-shopping-rewards": {
+    "Recommended": 0,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "privacy-edge-startup-boost": {
     "Recommended": 0,
     "Default": null,
     "InputType": "Toggle"
@@ -1763,6 +1803,11 @@
   },
   "privacy-narrator-scripting": {
     "Recommended": 0,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "privacy-notepad-ai-features": {
+    "Recommended": 1,
     "Default": null,
     "InputType": "Toggle"
   },
@@ -2169,6 +2214,11 @@
     "InputType": "Selection"
   },
   "system-restore-protection": {
+    "Recommended": 1,
+    "Default": null,
+    "InputType": "Toggle"
+  },
+  "system-verbose-logon-status": {
     "Recommended": 1,
     "Default": null,
     "InputType": "Toggle"

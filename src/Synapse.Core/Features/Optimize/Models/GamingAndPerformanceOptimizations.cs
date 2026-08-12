@@ -4147,6 +4147,30 @@ public static class GamingAndPerformanceOptimizations
                         },
                     },
                 },
+                new SettingDefinition
+                {
+                    Id = "system-verbose-logon-status",
+                    IsSubjectivePreference = true,
+                    Name = "Verbose Sign-in Status",
+                    Description = "Show detailed Windows startup, sign-in, sign-out, and shutdown status messages for troubleshooting",
+                    GroupName = "Diagnostics",
+                    Icon = "ClipboardTextClockOutline",
+                    InputType = InputType.Toggle,
+                    AddedInVersion = "26.08.12",
+                    RegistrySettings = new List<RegistrySetting>
+                    {
+                        new RegistrySetting
+                        {
+                            KeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System",
+                            ValueName = "VerboseStatus",
+                            RecommendedValue = 1,
+                            EnabledValue = [1],
+                            DisabledValue = [0, null],
+                            DefaultValue = null,
+                            ValueType = RegistryValueKind.DWord,
+                        },
+                    },
+                },
             },
         };
     }
