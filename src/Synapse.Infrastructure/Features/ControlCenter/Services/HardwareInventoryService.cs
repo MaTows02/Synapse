@@ -118,10 +118,28 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
     {
         try
         {
-            return NetworkInterface.GetAllNetworkInterfaces()
-                .Where(adapter => adapter.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
-                                  adapter.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+            var physicalAdapters = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(adapter => IsUserFacingNetworkAdapter(
+                    adapter.NetworkInterfaceType,
+                    adapter.Name,
+                    adapter.Description))
+                .Where(adapter => adapter.GetPhysicalAddress().GetAddressBytes().Length > 0)
                 .OrderByDescending(adapter => adapter.OperationalStatus == OperationalStatus.Up)
+                .ThenByDescending(adapter => adapter.Speed)
+                .ToList();
+
+            // Users primarily need the adapter that actually carries traffic. If
+            // Windows reports no active physical link, keep at most two real
+            // adapters so Ethernet/Wi-Fi can still be diagnosed without listing
+            // every virtual Wi-Fi Direct, VPN or Hyper-V interface.
+            var activeAdapters = physicalAdapters
+                .Where(adapter => adapter.OperationalStatus == OperationalStatus.Up)
+                .ToList();
+            var visibleAdapters = activeAdapters.Count > 0
+                ? activeAdapters
+                : physicalAdapters.Take(2).ToList();
+
+            return visibleAdapters
                 .Select(adapter =>
                 {
                     var properties = adapter.GetIPProperties();
@@ -150,6 +168,30 @@ public sealed class HardwareInventoryService : IHardwareInventoryService
         {
             return Array.Empty<NetworkAdapterInfo>();
         }
+    }
+
+    internal static bool IsUserFacingNetworkAdapter(
+        NetworkInterfaceType type,
+        string? name,
+        string? description)
+    {
+        var physicalType = type is NetworkInterfaceType.Ethernet
+            or NetworkInterfaceType.Ethernet3Megabit
+            or NetworkInterfaceType.FastEthernetFx
+            or NetworkInterfaceType.FastEthernetT
+            or NetworkInterfaceType.GigabitEthernet
+            or NetworkInterfaceType.Wireless80211;
+        if (!physicalType) return false;
+
+        var identity = $"{name} {description}";
+        string[] virtualMarkers =
+        [
+            "virtual", "vethernet", "hyper-v", "wi-fi direct", "wifi direct",
+            "wan miniport", "vpn", "tap-", "tap ", "tunnel", "loopback",
+            "teredo", "isatap", "bluetooth", "wsl", "docker", "vmware",
+            "virtualbox", "hamachi", "tailscale", "zerotier"
+        ];
+        return !virtualMarkers.Any(marker => identity.Contains(marker, StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<string> CollectPublicIpAsync(CancellationToken cancellationToken)

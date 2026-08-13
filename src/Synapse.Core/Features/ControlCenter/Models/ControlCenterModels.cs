@@ -176,7 +176,8 @@ public sealed record BoosterCandidateInfo(
     string ExecutablePath,
     BoosterTargetKind TargetKind,
     bool Recommended,
-    string State);
+    string State,
+    long EstimatedMemoryBytes = 0);
 
 public sealed record GameOptimizationProfile(
     string GameId,

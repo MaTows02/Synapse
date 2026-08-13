@@ -35,7 +35,7 @@ internal static class PageScrollHelper
     /// jumping all the way to the end.
     /// </summary>
     private const double PageStepFraction = 0.85;
-    private const double WheelPixelsPerNotch = 320;
+    internal const double DefaultWheelPixelsPerNotch = 320;
 
     /// <summary>
     /// Attaches fast-scroll handling to <paramref name="keyEventSource"/> for the
@@ -48,7 +48,10 @@ internal static class PageScrollHelper
     /// <c>e.Handled = true</c> before the ListView's own handler runs. A bubbling
     /// KeyDown subscription stays as a belt-and-braces fallback.
     /// </summary>
-    public static void Attach(UIElement keyEventSource, ScrollView scrollView)
+    public static void Attach(
+        UIElement keyEventSource,
+        ScrollView scrollView,
+        double wheelPixelsPerNotch = DefaultWheelPixelsPerNotch)
     {
         if (keyEventSource == null || scrollView == null) return;
 
@@ -64,7 +67,7 @@ internal static class PageScrollHelper
 
         keyEventSource.AddHandler(
             UIElement.PointerWheelChangedEvent,
-            new PointerEventHandler((s, e) => HandleWheel(scrollView, e)),
+            new PointerEventHandler((s, e) => HandleWheel(scrollView, e, wheelPixelsPerNotch)),
             handledEventsToo: true);
     }
 
@@ -72,17 +75,23 @@ internal static class PageScrollHelper
     /// Applies the same accelerated wheel behavior to classic ScrollViewer hosts.
     /// Control Center uses these because its pages contain nested virtualized lists.
     /// </summary>
-    public static void Attach(UIElement eventSource, ScrollViewer scrollViewer)
+    public static void Attach(
+        UIElement eventSource,
+        ScrollViewer scrollViewer,
+        double wheelPixelsPerNotch = DefaultWheelPixelsPerNotch)
     {
         if (eventSource == null || scrollViewer == null) return;
 
         eventSource.AddHandler(
             UIElement.PointerWheelChangedEvent,
-            new PointerEventHandler((s, e) => HandleWheel(scrollViewer, e)),
+            new PointerEventHandler((s, e) => HandleWheel(scrollViewer, e, wheelPixelsPerNotch)),
             handledEventsToo: true);
     }
 
-    public static void HandleWheel(ScrollView scrollView, PointerRoutedEventArgs e)
+    public static void HandleWheel(
+        ScrollView scrollView,
+        PointerRoutedEventArgs e,
+        double wheelPixelsPerNotch = DefaultWheelPixelsPerNotch)
     {
         if (scrollView == null || e == null || scrollView.ScrollableHeight <= 0) return;
         if ((e.KeyModifiers & VirtualKeyModifiers.Control) != 0) return;
@@ -91,12 +100,15 @@ internal static class PageScrollHelper
         var properties = e.GetCurrentPoint(scrollView).Properties;
         if (properties.IsHorizontalMouseWheel || properties.MouseWheelDelta == 0) return;
 
-        scrollView.ScrollBy(0, CalculateWheelOffset(properties.MouseWheelDelta),
+        scrollView.ScrollBy(0, CalculateWheelOffset(properties.MouseWheelDelta, wheelPixelsPerNotch),
             new ScrollingScrollOptions(ScrollingAnimationMode.Disabled));
         e.Handled = true;
     }
 
-    public static void HandleWheel(ScrollViewer scrollViewer, PointerRoutedEventArgs e)
+    public static void HandleWheel(
+        ScrollViewer scrollViewer,
+        PointerRoutedEventArgs e,
+        double wheelPixelsPerNotch = DefaultWheelPixelsPerNotch)
     {
         if (scrollViewer == null || e == null || scrollViewer.ScrollableHeight <= 0) return;
         if ((e.KeyModifiers & VirtualKeyModifiers.Control) != 0) return;
@@ -106,15 +118,17 @@ internal static class PageScrollHelper
         if (properties.IsHorizontalMouseWheel || properties.MouseWheelDelta == 0) return;
 
         var target = Math.Clamp(
-            scrollViewer.VerticalOffset + CalculateWheelOffset(properties.MouseWheelDelta),
+            scrollViewer.VerticalOffset + CalculateWheelOffset(properties.MouseWheelDelta, wheelPixelsPerNotch),
             0,
             scrollViewer.ScrollableHeight);
         scrollViewer.ChangeView(null, target, null, disableAnimation: true);
         e.Handled = true;
     }
 
-    internal static double CalculateWheelOffset(int wheelDelta) =>
-        -wheelDelta / 120d * WheelPixelsPerNotch;
+    internal static double CalculateWheelOffset(
+        int wheelDelta,
+        double wheelPixelsPerNotch = DefaultWheelPixelsPerNotch) =>
+        -wheelDelta / 120d * Math.Clamp(wheelPixelsPerNotch, 80, 640);
 
     /// <summary>
     /// Inspects <paramref name="e"/> and scrolls <paramref name="scrollView"/> if

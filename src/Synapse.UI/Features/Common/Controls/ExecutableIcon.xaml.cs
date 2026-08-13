@@ -9,8 +9,8 @@ namespace Synapse.UI.Features.Common.Controls;
 /// <summary>Displays the real shell icon for an executable with a lightweight fallback.</summary>
 public sealed partial class ExecutableIcon : UserControl
 {
-    private const int MaximumCachedIcons = 384;
-    private static readonly Dictionary<string, BitmapImage> Cache = new(StringComparer.OrdinalIgnoreCase);
+    private const int MaximumCachedIcons = 96;
+    private static readonly Dictionary<string, WeakReference<BitmapImage>> Cache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly SemaphoreSlim IconLoadGate = new(4, 4);
     private int _loadVersion;
     private string _loadedPath = string.Empty;
@@ -29,7 +29,12 @@ public sealed partial class ExecutableIcon : UserControl
     {
         InitializeComponent();
         Loaded += (_, _) => LoadIconAsync();
-        Unloaded += (_, _) => _loadVersion++;
+        Unloaded += (_, _) =>
+        {
+            _loadVersion++;
+            _loadedPath = string.Empty;
+            IconImage.Source = null;
+        };
     }
 
     private static void OnExecutablePathChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
@@ -50,20 +55,20 @@ public sealed partial class ExecutableIcon : UserControl
 
         try
         {
-            if (!Cache.TryGetValue(path, out var bitmap))
+            if (!TryGetCached(path, out var bitmap))
             {
                 await IconLoadGate.WaitAsync();
                 try
                 {
-                    if (!Cache.TryGetValue(path, out bitmap))
+                    if (!TryGetCached(path, out bitmap))
                     {
                         var file = await StorageFile.GetFileFromPathAsync(path);
                         using var thumbnail = await file.GetThumbnailAsync(
                             ThumbnailMode.SingleItem, 64, ThumbnailOptions.UseCurrentScale);
                         bitmap = new BitmapImage { DecodePixelWidth = 64 };
                         await bitmap.SetSourceAsync(thumbnail);
-                        if (Cache.Count >= MaximumCachedIcons) Cache.Clear();
-                        Cache[path] = bitmap;
+                        TrimCache();
+                        Cache[path] = new WeakReference<BitmapImage>(bitmap!);
                     }
                 }
                 finally { IconLoadGate.Release(); }
@@ -79,5 +84,23 @@ public sealed partial class ExecutableIcon : UserControl
         {
             // Protected/system executables can deny thumbnail access; the fallback remains visible.
         }
+    }
+
+    private static bool TryGetCached(string path, out BitmapImage? bitmap)
+    {
+        bitmap = null;
+        if (!Cache.TryGetValue(path, out var weak)) return false;
+        if (weak.TryGetTarget(out bitmap)) return true;
+        Cache.Remove(path);
+        return false;
+    }
+
+    private static void TrimCache()
+    {
+        foreach (var dead in Cache.Where(entry => !entry.Value.TryGetTarget(out _)).Select(entry => entry.Key).ToList())
+            Cache.Remove(dead);
+
+        while (Cache.Count >= MaximumCachedIcons)
+            Cache.Remove(Cache.Keys.First());
     }
 }

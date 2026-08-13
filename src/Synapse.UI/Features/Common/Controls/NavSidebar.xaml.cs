@@ -149,7 +149,6 @@ public sealed partial class NavSidebar : UserControl, INotifyPropertyChanged
             { "Hardware", HardwareButton },
             { "DeepCleanup", DeepCleanupButton },
             { "SystemHealth", SystemHealthButton },
-            { "TaskManager", TaskManagerButton },
             { "AdvancedTools", AdvancedToolsButton },
             { "Settings", SettingsButton },
             { "More", MoreButton }

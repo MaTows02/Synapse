@@ -14,7 +14,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
                         <TextBlock Text="Tableau de bord" FontSize="30" FontWeight="SemiBold"/>
-                        <TextBlock Text="Bienvenue dans Synapse. Les outils Game Booster, Matériel, Nettoyage profond, Santé système et Gestionnaire des tâches sont maintenant accessibles directement sous Personnaliser." TextWrapping="Wrap" Opacity="0.65"/>
+                        <TextBlock Text="Bienvenue dans Synapse. Game Booster, Matériel, Nettoyage profond et Santé système sont accessibles directement sous Personnaliser." TextWrapping="Wrap" Opacity="0.65"/>
                     </StackPanel>
                 </Grid>
             </Border>

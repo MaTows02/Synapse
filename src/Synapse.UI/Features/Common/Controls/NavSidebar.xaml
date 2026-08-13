@@ -13,14 +13,33 @@
           AutomationProperties.LandmarkType="Navigation">
 
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Synapse logo -->
             <RowDefinition Height="Auto"/>  <!-- Top Nav Buttons -->
             <RowDefinition Height="*"/>     <!-- Spacer -->
             <RowDefinition Height="Auto"/>  <!-- Bottom Nav Buttons -->
         </Grid.RowDefinitions>
 
+        <!-- Permanent product mark: unlike the title-bar mark, this remains
+             visible when the navigation pane is compact. -->
+        <Border Grid.Row="0"
+                Width="44"
+                Height="44"
+                Margin="0,8,0,4"
+                HorizontalAlignment="Center"
+                CornerRadius="13"
+                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                AutomationProperties.Name="Logo Synapse">
+            <Image Source="{ThemeResource SynapseMonochromeLogo}"
+                   Width="28"
+                   Height="28"
+                   Stretch="Uniform"/>
+        </Border>
+
         <!-- Top Navigation Buttons -->
         <StackPanel x:Name="TopNavPanel"
-                    Grid.Row="0"
+                    Grid.Row="1"
                     Spacing="4"
                     Padding="{x:Bind NavPanelPadding, Mode=OneWay}"
                     Margin="0,8,0,0">
@@ -91,18 +110,11 @@
                              IsCompact="{x:Bind IsCompact, Mode=OneWay}"
                              Clicked="NavButton_Clicked"/>
 
-            <local:NavButton x:Name="TaskManagerButton"
-                             IconSymbol="Apps"
-                             Text="Gestionnaire des tâches"
-                             AutomationProperties.Name="Gestionnaire des tâches"
-                             NavigationTag="TaskManager"
-                             IsCompact="{x:Bind IsCompact, Mode=OneWay}"
-                             Clicked="NavButton_Clicked"/>
         </StackPanel>
 
         <!-- Bottom Navigation Buttons -->
         <StackPanel x:Name="BottomNavPanel"
-                    Grid.Row="2"
+                    Grid.Row="3"
                     Spacing="4"
                     Padding="{x:Bind NavPanelPadding, Mode=OneWay}"
                     Margin="0,0,0,8">

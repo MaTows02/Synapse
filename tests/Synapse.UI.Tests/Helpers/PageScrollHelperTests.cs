@@ -47,4 +47,17 @@ public class PageScrollHelperTests
     {
         PageScrollHelper.CalculateWheelOffset(delta).Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData(120, 160, -160)]
+    [InlineData(-120, 420, 420)]
+    [InlineData(120, 5, -80)]
+    [InlineData(120, 900, -640)]
+    public void CalculateWheelOffset_UsesPerPageSpeedWithinSafeBounds(
+        int delta,
+        double pixelsPerNotch,
+        double expected)
+    {
+        PageScrollHelper.CalculateWheelOffset(delta, pixelsPerNotch).Should().Be(expected);
+    }
 }
