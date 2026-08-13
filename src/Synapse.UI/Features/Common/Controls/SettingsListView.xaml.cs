@@ -63,7 +63,9 @@ public sealed partial class SettingsListView : UserControl
         // Wire PageUp/PageDown fast-scroll and Home/End jump on the outer ScrollView.
         // Listening on the UserControl root lets us see the key even after the inner
         // ListView marks it handled during focus traversal (issue #581).
-        PageScrollHelper.Attach(this, ContentScrollView);
+        // Optimization pages are extremely long. A slightly larger wheel step
+        // keeps them responsive without affecting shorter Control Center pages.
+        PageScrollHelper.Attach(this, ContentScrollView, wheelPixelsPerNotch: 420);
     }
 
     /// <summary>

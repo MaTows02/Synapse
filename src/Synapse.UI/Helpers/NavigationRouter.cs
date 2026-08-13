@@ -34,7 +34,6 @@ internal sealed class NavigationRouter
         ["Hardware"] = typeof(ControlCenterPage),
         ["DeepCleanup"] = typeof(ControlCenterPage),
         ["SystemHealth"] = typeof(ControlCenterPage),
-        ["TaskManager"] = typeof(ControlCenterPage),
         ["Settings"] = typeof(SettingsPage),
         ["Optimize"] = typeof(OptimizePage),
         ["Customize"] = typeof(CustomizePage),
@@ -83,7 +82,7 @@ internal sealed class NavigationRouter
         StartupLogger.Log("NavigationRouter", $"Resolved page type: {pageType.Name}");
 
         if (frame.CurrentSourcePageType == pageType && frame.Content is ControlCenterPage controlCenter &&
-            tag is "GameBooster" or "Hardware" or "DeepCleanup" or "SystemHealth" or "TaskManager")
+            tag is "GameBooster" or "Hardware" or "DeepCleanup" or "SystemHealth")
         {
             controlCenter.OpenCategory(tag);
             return;
@@ -94,7 +93,7 @@ internal sealed class NavigationRouter
             try
             {
                 StartupLogger.Log("NavigationRouter", $"Navigating to {pageType.Name}...");
-                var navigationParameter = parameter ?? (tag is "GameBooster" or "Hardware" or "DeepCleanup" or "SystemHealth" or "TaskManager" ? tag : null);
+                var navigationParameter = parameter ?? (tag is "GameBooster" or "Hardware" or "DeepCleanup" or "SystemHealth" ? tag : null);
                 var result = navigationParameter != null
                     ? frame.Navigate(pageType, navigationParameter)
                     : frame.Navigate(pageType);

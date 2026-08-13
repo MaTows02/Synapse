@@ -3,7 +3,6 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
-using System.ServiceProcess;
 using Synapse.Core.Features.ControlCenter.Interfaces;
 using Synapse.Core.Features.ControlCenter.Models;
 
@@ -18,14 +17,6 @@ public sealed class GameBoosterService : IGameBoosterService
         "MsMpEng", "SecurityHealthService", "Synapse"
     };
 
-    private static readonly HashSet<string> ProtectedServices = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Appinfo", "BFE", "BrokerInfrastructure", "CoreMessagingRegistrar", "CryptSvc", "DcomLaunch",
-        "Dhcp", "Dnscache", "EventLog", "gpsvc", "LSM", "mpssvc", "nsi", "PlugPlay", "Power",
-        "ProfSvc", "RpcEptMapper", "RpcSs", "SamSs", "Schedule", "SecurityHealthService", "SENS",
-        "StateRepository", "SystemEventsBroker", "Themes", "UserManager", "WinDefend", "Winmgmt"
-    };
-
     private readonly string _profilePath = SynapseDataPaths.GetPath("game-profiles.json");
     private readonly SemaphoreSlim _sync = new(1, 1);
     private readonly ConcurrentDictionary<string, ActiveBoosterSession> _sessions = new(StringComparer.OrdinalIgnoreCase);
@@ -36,8 +27,24 @@ public sealed class GameBoosterService : IGameBoosterService
     public event EventHandler<BoosterSession>? SessionStarted;
     public event EventHandler<string>? SessionEnded;
 
-    public Task<IReadOnlyList<GameOptimizationProfile>> LoadProfilesAsync(CancellationToken cancellationToken = default) =>
-        SynapseJson.ReadAsync<IReadOnlyList<GameOptimizationProfile>>(_profilePath, Array.Empty<GameOptimizationProfile>(), cancellationToken);
+    public async Task<IReadOnlyList<GameOptimizationProfile>> LoadProfilesAsync(CancellationToken cancellationToken = default)
+    {
+        var profiles = await SynapseJson.ReadAsync<IReadOnlyList<GameOptimizationProfile>>(
+            _profilePath,
+            Array.Empty<GameOptimizationProfile>(),
+            cancellationToken).ConfigureAwait(false);
+
+        // V3 deliberately no longer stops Windows services. Keep existing user
+        // profiles usable while dropping legacy service rules in memory.
+        return profiles.Select(SanitizeProfile).ToList();
+    }
+
+    internal static GameOptimizationProfile SanitizeProfile(GameOptimizationProfile profile) => profile with
+    {
+        ProcessRules = profile.ProcessRules
+            .Where(rule => rule.TargetKind == BoosterTargetKind.Process)
+            .ToList()
+    };
 
     public async Task SaveProfileAsync(GameOptimizationProfile profile, CancellationToken cancellationToken = default)
     {
@@ -46,7 +53,7 @@ public sealed class GameBoosterService : IGameBoosterService
         {
             var profiles = (await LoadProfilesAsync(cancellationToken).ConfigureAwait(false)).ToList();
             profiles.RemoveAll(x => string.Equals(x.GameId, profile.GameId, StringComparison.OrdinalIgnoreCase));
-            profiles.Add(profile with { UpdatedAt = DateTimeOffset.Now });
+            profiles.Add(SanitizeProfile(profile) with { UpdatedAt = DateTimeOffset.Now });
             await SynapseJson.WriteAsync(_profilePath, profiles, cancellationToken).ConfigureAwait(false);
             _profiles = profiles;
         }
@@ -92,27 +99,9 @@ public sealed class GameBoosterService : IGameBoosterService
     private async Task ActivateAsync(GameOptimizationProfile profile, int gameProcessId)
     {
         var suspended = new List<int>();
-        var stoppedServices = new List<string>();
-        foreach (var rule in profile.ProcessRules.Where(x => x.Enabled))
+        foreach (var rule in profile.ProcessRules.Where(x =>
+                     x.Enabled && x.TargetKind == BoosterTargetKind.Process))
         {
-            if (rule.TargetKind == BoosterTargetKind.Service)
-            {
-                if (rule.Action != BoosterRuleAction.StopService || ProtectedServices.Contains(rule.ProcessName)) continue;
-                try
-                {
-                    using var service = new ServiceController(rule.ProcessName);
-                    service.Refresh();
-                    if (service.Status == ServiceControllerStatus.Running && service.CanStop)
-                    {
-                        service.Stop();
-                        await Task.Run(() => service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(12))).ConfigureAwait(false);
-                        stoppedServices.Add(rule.ProcessName);
-                    }
-                }
-                catch { }
-                continue;
-            }
-
             var normalized = Path.GetFileNameWithoutExtension(rule.ProcessName);
             if (ProtectedProcesses.Contains(normalized)) continue;
             foreach (var process in Process.GetProcessesByName(normalized))
@@ -169,13 +158,17 @@ public sealed class GameBoosterService : IGameBoosterService
                 catch { }
             }
             if (granted.HasValue) NtSetTimerResolution(5_000, false, out _);
-            RestartServices(stoppedServices);
             RestorePowerPlan(previousPowerScheme);
             awakeLease?.Dispose();
             return;
         }
 
-        var session = new BoosterSession(profile.GameId, DateTimeOffset.Now, suspended, granted, stoppedServices);
+        var session = new BoosterSession(
+            profile.GameId,
+            DateTimeOffset.Now,
+            suspended,
+            granted,
+            Array.Empty<string>());
         _sessions[profile.GameId] = new ActiveBoosterSession(session, game, previousPowerScheme, awakeLease);
         SessionStarted?.Invoke(this, session);
         if (game?.HasExited == true)
@@ -197,7 +190,6 @@ public sealed class GameBoosterService : IGameBoosterService
         }
         if (active.Session.GrantedTimerResolution100Ns.HasValue)
             NtSetTimerResolution(5_000, false, out _);
-        RestartServices(active.Session.StoppedServiceNames ?? Array.Empty<string>());
         RestorePowerPlan(active.PreviousPowerScheme);
         active.AwakeLease?.Dispose();
         active.GameProcess?.Dispose();
@@ -236,20 +228,6 @@ public sealed class GameBoosterService : IGameBoosterService
         // This action is only used when the user explicitly selected "Fermer" in the profile.
         // A forced fallback is necessary for tray/background apps without a main window.
         if (!process.HasExited) process.Kill(entireProcessTree: true);
-    }
-
-    private static void RestartServices(IEnumerable<string> serviceNames)
-    {
-        foreach (var serviceName in serviceNames)
-        {
-            try
-            {
-                using var service = new ServiceController(serviceName);
-                service.Refresh();
-                if (service.Status == ServiceControllerStatus.Stopped) service.Start();
-            }
-            catch { }
-        }
     }
 
     private static string? TryEnableHighPerformancePowerPlan()
